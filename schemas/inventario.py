@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 from datetime import date
 
-# Create Mercancia Schema (Pydantic Model)
-class MercanciaCreate(BaseModel):
+# Create inventario Schema (Pydantic Model)
+class InventarioCreate(BaseModel):
     producto_id: int
     cantidad: float
     um: str
@@ -10,8 +10,8 @@ class MercanciaCreate(BaseModel):
     fecha: date
     kiosko_id: int
     
-# Complete Mercancia Schema (Pydantic Model)
-class Mercancia(BaseModel):
+# Complete Inventario Schema (Pydantic Model)
+class Inventario(BaseModel):
     id: int
     producto_id: int
     cantidad: float

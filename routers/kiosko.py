@@ -1,10 +1,11 @@
-from fastapi import APIRouter, status, HTTPException
-from typing import List
+from fastapi import APIRouter, status, HTTPException, Depends
+from typing import List, Annotated
 from sqlalchemy.orm import Session
 from database.database import Base, engine
 import schemas.kiosko
 import models.models
 import bcrypt
+import auth.auth as login
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -12,7 +13,7 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/kiosko", response_model=schemas.kiosko.Kiosko, status_code=status.HTTP_201_CREATED, tags=["kiosko"])
-async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate):
+async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate,token: Annotated[str, Depends(login.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
