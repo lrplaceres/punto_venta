@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from database.database import Base, engine
 import schemas.mercancia
 import models.models
+from datetime import date
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -55,7 +56,7 @@ async def read_mercancia(id: int):
     return mercanciadb
 
 @router.put("/mercancia/{id}", tags=["mercancia"])
-async def update_producto(id: int, producto_id: int, cantidad: float, um: str, costo: float):
+async def update_mercancia(id: int, producto_id: int, cantidad: float, um: str, costo: float, fecha: date):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -72,14 +73,15 @@ async def update_producto(id: int, producto_id: int, cantidad: float, um: str, c
         mercanciadb.producto_id = producto_id
         mercanciadb.cantidad = cantidad
         mercanciadb.um = um        
-        mercanciadb.costo = costo        
+        mercanciadb.costo = costo     
+        mercanciadb.fecha = fecha    
         session.commit()
 
     # close the session
     session.close()
 
 @router.delete("/mercancia/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["mercancia"])
-async def delete_producto(id: int):
+async def delete_mercancia(id: int):
         
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)

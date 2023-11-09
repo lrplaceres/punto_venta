@@ -35,7 +35,7 @@ class Mercancia(Base):
     um: Mapped[str]= Column(String(256))
     costo: Mapped[float] = Column(Float(2))
     fecha: Mapped[date] = Column(Date)
-    kiosko_id: Mapped[str]= Column(Integer, ForeignKey("kiosko.id"))
+    kiosko_id: Mapped[int]= Column(Integer, ForeignKey("kiosko.id"))
 
     ventas: Mapped[int] = relationship("Venta", back_populates = "mercancia")
     producto: Mapped[int] = relationship("Producto", back_populates = "mercancias")

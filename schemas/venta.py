@@ -5,7 +5,7 @@ from datetime import date
 class VentaCreate(BaseModel):
     mercancia_id: int
     cantidad: float
-    costo: float
+    precio: float
     fecha: date
     kiosko_id: int
     
@@ -14,6 +14,6 @@ class Venta(BaseModel):
     id: int
     mercancia_id: int
     cantidad: float
-    costo: float
+    precio: float
     fecha: date
     kiosko_id: int
