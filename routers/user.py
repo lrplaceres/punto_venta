@@ -1,5 +1,5 @@
-from fastapi import APIRouter, status, HTTPException
-from typing import List
+from fastapi import APIRouter, status, HTTPException, Depends
+from typing import List, Annotated
 from sqlalchemy.orm import Session
 from database.database import Base, engine
 import schemas.user
@@ -13,7 +13,7 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/user", response_model=schemas.user.UserInDB, status_code=status.HTTP_201_CREATED, tags=["user"])
-async def create_user(user: schemas.user.UserInDB):
+async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -38,8 +38,9 @@ async def create_user(user: schemas.user.UserInDB):
     # return the todo object
     return userdb
 
+
 @router.get("/user/{id}", response_model=schemas.user.User, tags=["user"])
-async def read_user(id: int):
+async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -55,8 +56,9 @@ async def read_user(id: int):
 
     return userdb
 
+
 @router.put("/user/{id}", tags=["user"])
-async def update_user(id: int, usuario:str, nombre:str, email:str, rol:str, activo:bool, password:str):
+async def update_user(id: int, usuario:str, nombre:str, email:str, rol:str, activo:bool, password:str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -83,8 +85,9 @@ async def update_user(id: int, usuario:str, nombre:str, email:str, rol:str, acti
     # close the session
     session.close()
 
+
 @router.delete("/user/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["user"])
-async def delete_user(id: int):
+async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
         
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
