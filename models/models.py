@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, Boolean, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, Boolean, Date, UniqueConstraint
 from database.database import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Mapped
@@ -10,12 +10,12 @@ class Kiosko(Base):
     nombre: Mapped[str]= Column(String(256))
     representante: Mapped[str]= Column(String(256))
     activo: Mapped[bool] = Column(Boolean, default=False)
-    useradmin: Mapped[str]= Column(String(256))
-    passwadmin: Mapped[str]= Column(String(256))
+    admin_id: Mapped[int]= Column(Integer, ForeignKey("user.id"))
 
     productos: Mapped[int|None] = relationship("Producto", back_populates="kiosko")
     inventarios: Mapped[int] = relationship("Inventario", back_populates = "kiosko")
     ventas: Mapped[int] = relationship("Venta", back_populates = "kiosko")
+    admins: Mapped[int] = relationship("User", back_populates = "kiosko")
 
 
 class Producto(Base):
@@ -64,3 +64,5 @@ class User(Base):
     rol: Mapped[str]= Column(String(256))
     activo: Mapped[bool]= Column(Boolean)
     password: Mapped[str]= Column(String(256))
+
+    kiosko: Mapped[int|None] = relationship("Kiosko", back_populates = "admins")

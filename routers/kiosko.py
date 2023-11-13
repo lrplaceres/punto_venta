@@ -5,7 +5,7 @@ from database.database import Base, engine
 import schemas.kiosko
 import models.models
 import bcrypt
-import auth.auth as login
+import auth.auth as auth
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -13,23 +13,13 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/kiosko", response_model=schemas.kiosko.Kiosko, status_code=status.HTTP_201_CREATED, tags=["kiosko"])
-async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate,token: Annotated[str, Depends(login.oauth2_scheme)]):
+async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    #buscar si existe admin
-    admin = session.query(models.models.Kiosko).where(models.models.Kiosko.useradmin == kiosko.useradmin).count()
-    if admin:
-        raise HTTPException(status_code=412, detail=f"kiosko admin {kiosko.useradmin} exist")
-
-    #hash password
-    kiosko.passwadmin = kiosko.passwadmin.encode()
-    sal = bcrypt.gensalt()
-    pass_admin_hasheada = bcrypt.hashpw(kiosko.passwadmin, sal)
-
     # create an instance of the ToDo database model
-    kioskodb = models.models.Kiosko(nombre = kiosko.nombre, representante = kiosko.representante, activo = kiosko.activo, useradmin = kiosko.useradmin, passwadmin = pass_admin_hasheada)
+    kioskodb = models.models.Kiosko(nombre = kiosko.nombre, representante = kiosko.representante, activo = kiosko.activo, admin_id = kiosko.admin_id)
 
     # add it to the session and commit it
     session.add(kioskodb)
@@ -43,7 +33,7 @@ async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate,token: Annotated[str
     return kioskodb
 
 @router.get("/kiosko/{id}", tags=["kiosko"])
-async def read_kiosko(id: int):
+async def read_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -55,18 +45,18 @@ async def read_kiosko(id: int):
     session.close()
 
     if not kioskodb:
-        raise HTTPException(status_code=404, detail=f"kiosko item with id {id} not found")
+        raise HTTPException(status_code=404, detail=f"Kiosko con id {id} no encontrado")
 
     return {
         "id": kioskodb.id,
         "nombre": kioskodb.nombre,
         "activo": kioskodb.activo,
         "representante": kioskodb.representante,
-        "useradmin": kioskodb.useradmin
+        "admin_id": kioskodb.admin_id
         }
 
 @router.put("/kiosko/{id}", tags=["kiosko"])
-async def update_kiosko(id: int, nombre: str, representante: str, activo: bool, passwadmin: str):
+async def update_kiosko(id: int, nombre: str, representante: str, activo: bool, token: Annotated[str, Depends(auth.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -74,24 +64,18 @@ async def update_kiosko(id: int, nombre: str, representante: str, activo: bool, 
     # get the provincia item with the given id
     kioskodb: schemas.kiosko.Kiosko = session.query(models.models.Kiosko).get(id)
 
-    #hash password
-    passwadmin = passwadmin.encode()
-    sal = bcrypt.gensalt()
-    pass_admin_hasheada = bcrypt.hashpw(passwadmin, sal)
-
     # update todo item with the given task (if an item with the given id was found)
     if kioskodb:
         kioskodb.nombre = nombre
         kioskodb.representante = representante
         kioskodb.activo = activo
-        kioskodb.passwadmin = pass_admin_hasheada
         session.commit()
 
     # close the session
     session.close()
 
 @router.delete("/kiosko/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["kiosko"])
-async def delete_kiosko(id: int):
+async def delete_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
         
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -105,6 +89,6 @@ async def delete_kiosko(id: int):
         session.commit()
         session.close()
     else:
-        raise HTTPException(status_code=404, detail=f"kiosko item with id {id} not found")
+        raise HTTPException(status_code=404, detail=f"Kiosko con id {id} no encontrado")
 
     return None

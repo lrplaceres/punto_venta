@@ -1,8 +1,14 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException, status
 from routers import kiosko, producto, inventario, venta, user
+import schemas.token as schemaToken
+import schemas.user as schemaUser
 
 from typing import Annotated
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+import auth.auth as auth
+from datetime import datetime, timedelta
+import models.models as models
+from typing import Annotated
 
 app = FastAPI()
 
@@ -14,6 +20,23 @@ app.include_router(inventario.router)
 app.include_router(venta.router)
 app.include_router(user.router)
 
-@app.get("/")
-def index(token: Annotated[str, Depends(oauth2_scheme)]):
-    return {"mensaje": "Bienvenido"}
+@app.post("/token", response_model=schemaToken.Token)
+async def login_for_access_token(form_data: Annotated[auth.OAuth2PasswordRequestForm, Depends()]):
+    
+    user = auth.authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrecto",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.usuario}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get("/users/me/", response_model=schemaUser.User)
+async def read_users_me(current_user: Annotated[models.User, Depends(auth.get_current_active_user)]):
+    return current_user

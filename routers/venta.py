@@ -1,10 +1,11 @@
-from fastapi import APIRouter, status, HTTPException
-from typing import List
+from fastapi import APIRouter, status, HTTPException, Depends
+from typing import List, Annotated
 from sqlalchemy.orm import Session
 from database.database import Base, engine
 import schemas.venta
 import models.models
 from datetime import date
+import auth.auth as auth
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -12,7 +13,7 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/venta", response_model=schemas.venta.Venta, status_code=status.HTTP_201_CREATED, tags=["venta"])
-async def create_venta(venta: schemas.venta.VentaCreate):
+async def create_venta(venta: schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -20,9 +21,9 @@ async def create_venta(venta: schemas.venta.VentaCreate):
     existe_kiosko = session.query(models.models.Kiosko).get(venta.kiosko_id)
     existe_mercancia = session.query(models.models.Mercancia).get(venta.mercancia_id)
     if not existe_kiosko:
-        raise HTTPException(status_code=412, detail=f"mercancia not authorized")
+        raise HTTPException(status_code=412, detail=f"Inventario no autorizado")
     if not existe_mercancia:
-        raise HTTPException(status_code=412, detail=f"mercancia not authorized")
+        raise HTTPException(status_code=412, detail=f"Inventario no autorizado")
 
     # create an instance of the ToDo database model
     ventadb = models.models.Venta(mercancia_id = venta.mercancia_id, cantidad = venta.cantidad, precio = venta.precio, fecha = venta.fecha, kiosko_id = venta.kiosko_id)
@@ -39,7 +40,7 @@ async def create_venta(venta: schemas.venta.VentaCreate):
     return ventadb
 
 @router.get("/venta/{id}", tags=["venta"])
-async def read_venta(id: int):
+async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -51,19 +52,19 @@ async def read_venta(id: int):
     session.close()
 
     if not ventadb:
-        raise HTTPException(status_code=404, detail=f"venta item with id {id} not found")
+        raise HTTPException(status_code=404, detail=f"Venta con id {id} no encontrada")
 
     return ventadb
 
 @router.put("/venta/{id}", tags=["venta"])
-async def update_venta(id: int, mercancia_id: int, cantidad: float, precio: float, fecha: date):
+async def update_venta(id: int, mercancia_id: int, cantidad: float, precio: float, fecha: date, token: Annotated[str, Depends(auth.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
     existe_mercancia = session.query(models.models.Mercancia).get(mercancia_id)
     if not existe_mercancia:
-        raise HTTPException(status_code=412, detail=f"mercancia not authorized")
+        raise HTTPException(status_code=412, detail=f"Inventario no autorizado")
 
     # get the producto item with the given id
     ventadb: schemas.venta.Venta = session.query(models.models.Venta).get(id)    
@@ -80,7 +81,7 @@ async def update_venta(id: int, mercancia_id: int, cantidad: float, precio: floa
     session.close()
 
 @router.delete("/venta/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["venta"])
-async def delete_producto(id: int):
+async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
         
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -94,6 +95,6 @@ async def delete_producto(id: int):
         session.commit()
         session.close()
     else:
-        raise HTTPException(status_code=404, detail=f"venta item with id {id} not found")
+        raise HTTPException(status_code=404, detail=f"Venta con id {id} no encontrado")
 
     return None

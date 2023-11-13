@@ -5,8 +5,7 @@ class KioskoCreate(BaseModel):
     nombre: str
     representante: str
     activo: bool
-    useradmin: str
-    passwadmin: str
+    admin_id: int
     
 # Complete Kiosko Schema (Pydantic Model)
 class Kiosko(BaseModel):
@@ -14,5 +13,4 @@ class Kiosko(BaseModel):
     nombre: str
     representante: str
     activo: bool
-    useradmin: str
-    passwadmin: str
+    admin_id: int

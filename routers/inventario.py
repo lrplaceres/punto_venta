@@ -1,10 +1,11 @@
-from fastapi import APIRouter, status, HTTPException
-from typing import List
+from fastapi import APIRouter, status, HTTPException, Depends
+from typing import List, Annotated
 from sqlalchemy.orm import Session
 from database.database import Base, engine
 import schemas.inventario
 import models.models
 from datetime import date
+import auth.auth as auth
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -12,7 +13,7 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/inventario", response_model=schemas.inventario.Inventario, status_code=status.HTTP_201_CREATED, tags=["inventario"])
-async def create_inventario(inventario: schemas.inventario.InventarioCreate):
+async def create_inventario(inventario: schemas.inventario.InventarioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -20,9 +21,9 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate):
     existe_kiosko = session.query(models.models.Kiosko).get(inventario.kiosko_id)
     existe_producto = session.query(models.models.Producto).get(inventario.producto_id)
     if not existe_kiosko:
-        raise HTTPException(status_code=412, detail=f"inventario not authorized")
+        raise HTTPException(status_code=412, detail=f"Inventario no autorizado")
     if not existe_producto:
-        raise HTTPException(status_code=412, detail=f"inventario not authorized")
+        raise HTTPException(status_code=412, detail=f"Inventario no autorizado")
 
     # create an instance of the ToDo database model
     inventariodb = models.models.Integer(producto_id = inventario.producto_id, cantidad = inventario.cantidad, um = inventario.um, costo = inventario.costo, fecha = inventario.fecha, kiosko_id = inventario.kiosko_id)
@@ -39,7 +40,7 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate):
     return inventariodb
 
 @router.get("/inventario/{id}", tags=["inventario"])
-async def readinventario(id: int):
+async def readinventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -51,19 +52,19 @@ async def readinventario(id: int):
     session.close()
 
     if not inventariodb:
-        raise HTTPException(status_code=404, detail=f"inventario item with id {id} not found")
+        raise HTTPException(status_code=404, detail=f"Inventario con id {id} no encontrado")
 
     return inventariodb
 
 @router.put("/inventario/{id}", tags=["inventario"])
-async def update_inventario(id: int, producto_id: int, cantidad: float, um: str, costo: float, fecha: date):
+async def update_inventario(id: int, producto_id: int, cantidad: float, um: str, costo: float, fecha: date, token: Annotated[str, Depends(auth.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
     existe_producto = session.query(models.models.Producto).get(producto_id)
     if not existe_producto:
-        raise HTTPException(status_code=412, detail=f"inventario not authorized")
+        raise HTTPException(status_code=412, detail=f"Inventario no autorizado")
 
     # get the producto item with the given id
     inventariodb: schemas.inventario.Inventario = session.query(models.models.Inventario).get(id)    
@@ -81,7 +82,7 @@ async def update_inventario(id: int, producto_id: int, cantidad: float, um: str,
     session.close()
 
 @router.delete("/inventario/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["inventario"])
-async def delete_inventario(id: int):
+async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
         
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -95,6 +96,6 @@ async def delete_inventario(id: int):
         session.commit()
         session.close()
     else:
-        raise HTTPException(status_code=404, detail=f"inventario item with id {id} not found")
+        raise HTTPException(status_code=404, detail=f"Inventario con id {id} no encontrado")
 
     return None

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, status, HTTPException
-from typing import List
+from fastapi import APIRouter, status, HTTPException, Depends
+from typing import List, Annotated
 from sqlalchemy.orm import Session
 from database.database import Base, engine
 import schemas.producto
 import models.models
+import auth.auth as auth
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -11,7 +12,7 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/producto", response_model=schemas.producto.Producto, status_code=status.HTTP_201_CREATED, tags=["producto"])
-async def create_producto(producto: schemas.producto.ProductoCreate):
+async def create_producto(producto: schemas.producto.ProductoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -20,10 +21,10 @@ async def create_producto(producto: schemas.producto.ProductoCreate):
     existe_producto = session.query(models.models.Producto).where(models.models.Producto.nombre == producto.nombre, models.models.Producto.kiosko_id == producto.kiosko_id).count()
     existe_kiosko = session.query(models.models.Kiosko).get(producto.kiosko_id)
     if existe_producto:
-        raise HTTPException(status_code=412, detail=f"producto nombre {producto.nombre} exist")
+        raise HTTPException(status_code=412, detail=f"El producto {producto.nombre} ya existe")
     
     if not existe_kiosko:
-        raise HTTPException(status_code=412, detail=f"kiosko {producto.kiosko_id} not exist")
+        raise HTTPException(status_code=412, detail=f"El kiosko {producto.kiosko_id} no existe")
 
 
     # create an instance of the ToDo database model
@@ -41,7 +42,7 @@ async def create_producto(producto: schemas.producto.ProductoCreate):
     return productodb
 
 @router.get("/producto/{id}", tags=["producto"])
-async def read_producto(id: int):
+async def read_producto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -53,12 +54,12 @@ async def read_producto(id: int):
     session.close()
 
     if not productodb:
-        raise HTTPException(status_code=404, detail=f"producto item with id {id} not found")
+        raise HTTPException(status_code=404, detail=f"El producto con id {id} no encontrado")
 
     return productodb
 
 @router.put("/producto/{id}", tags=["producto"])
-async def update_producto(id: int, nombre: str, kiosko_id: int):
+async def update_producto(id: int, nombre: str, kiosko_id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -67,7 +68,7 @@ async def update_producto(id: int, nombre: str, kiosko_id: int):
     productodb: schemas.producto.Producto = session.query(models.models.Producto).get(id)
     
     if productodb.kiosko_id != kiosko_id:
-         raise HTTPException(status_code=403, detail=f"producto not authorized")
+         raise HTTPException(status_code=403, detail=f"Producto no autorizado")
     
     # update todo item with the given task (if an item with the given id was found)
     if productodb:
@@ -78,7 +79,7 @@ async def update_producto(id: int, nombre: str, kiosko_id: int):
     session.close()
 
 @router.delete("/producto/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["producto"])
-async def delete_producto(id: int):
+async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
         
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -92,6 +93,6 @@ async def delete_producto(id: int):
         session.commit()
         session.close()
     else:
-        raise HTTPException(status_code=404, detail=f"producto item with id {id} not found")
+        raise HTTPException(status_code=404, detail=f"El producto con id {id} no encontrado")
 
     return None
