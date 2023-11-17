@@ -10,3 +10,7 @@ class User(BaseModel):
 
 class UserInDB(User):
     password: str
+
+
+class UserList(User):
+    id: int

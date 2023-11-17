@@ -12,7 +12,8 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/producto", response_model=schemas.producto.Producto, status_code=status.HTTP_201_CREATED, tags=["producto"])
-async def create_producto(producto: schemas.producto.ProductoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+#async def create_producto(producto: schemas.producto.ProductoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def create_producto(producto: schemas.producto.ProductoCreate):
 
     if current_user.rol != "propietario":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")

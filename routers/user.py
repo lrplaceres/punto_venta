@@ -12,8 +12,9 @@ Base.metadata.create_all(engine)
 
 router = APIRouter()
 
-@router.post("/user", response_model=schemas.user.UserInDB, status_code=status.HTTP_201_CREATED, tags=["user"])
-async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.post("/user", response_model=schemas.user.User, status_code=status.HTTP_201_CREATED, tags=["user"])
+#async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def create_user(user: schemas.user.UserInDB):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -39,8 +40,25 @@ async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends
     return userdb
 
 
+@router.get("/user", response_model=List[schemas.user.UserList], tags=["user"])
+#async def read_user(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def read_users_list():
+    
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the kiosko item with the given id
+    usersdb = session.query(models.User).all()
+
+    # close the session
+    session.close()
+
+    return usersdb
+
+
 @router.get("/user/{id}", response_model=schemas.user.User, tags=["user"])
-async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+#async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def read_user(id: int):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
