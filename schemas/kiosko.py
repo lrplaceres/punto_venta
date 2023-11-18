@@ -14,3 +14,6 @@ class Kiosko(BaseModel):
     representante: str
     activo: bool
     admin_id: int
+
+    class Config:
+        orm_mode = True

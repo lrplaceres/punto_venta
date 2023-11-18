@@ -10,3 +10,6 @@ class Producto(BaseModel):
     id: int
     nombre: str
     kiosko_id: int
+
+    class Config:
+        orm_mode = True

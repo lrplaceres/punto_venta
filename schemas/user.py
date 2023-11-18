@@ -7,6 +7,9 @@ class User(BaseModel):
     rol: str
     activo: bool | None = None
 
+    class Config:
+        orm_mode = True
+
 
 class UserInDB(User):
     password: str
@@ -14,3 +17,9 @@ class UserInDB(User):
 
 class UserList(User):
     id: int
+
+class UserEdit(BaseModel):
+    nombre: str | None = None
+    email: str | None = None
+    rol: str
+    activo: bool | None = None

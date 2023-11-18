@@ -13,10 +13,11 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/kiosko", response_model=schemas.kiosko.Kiosko, status_code=status.HTTP_201_CREATED, tags=["kiosko"])
-async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+#async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate):
 
-    if current_user.rol != "superadmin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
+    #if current_user.rol != "superadmin":
+    #    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -36,8 +37,25 @@ async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate, token: Annotated[st
     return kioskodb
 
 
+@router.get("/kiosko", response_model=List[schemas.kiosko.Kiosko], tags=["kiosko"])
+#async def read_kiosko_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def read_kiosko_list():
+    
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the kiosko item with the given id
+    kioskosdb = session.query(models.Kiosko).all()
+
+    # close the session
+    session.close()
+
+    return kioskosdb
+
+
 @router.get("/kiosko/{id}", tags=["kiosko"])
-async def read_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+#async def read_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+async def read_kiosko(id: int):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -61,10 +79,11 @@ async def read_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
 
 
 @router.put("/kiosko/{id}", tags=["kiosko"])
-async def update_kiosko(id: int, nombre: str, representante: str, activo: bool, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+#async def update_kiosko(id: int, nombre: str, representante: str, activo: bool, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_kiosko(id: int, kiosko: schemas.kiosko.KioskoCreate):
 
-    if current_user.rol != "superadmin" and current_user.rol != "propietario":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
+    #if current_user.rol != "superadmin" and current_user.rol != "propietario":
+    #    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -74,9 +93,10 @@ async def update_kiosko(id: int, nombre: str, representante: str, activo: bool, 
 
     # update todo item with the given task (if an item with the given id was found)
     if kioskodb:
-        kioskodb.nombre = nombre
-        kioskodb.representante = representante
-        kioskodb.activo = activo
+        kioskodb.nombre = kiosko.nombre
+        kioskodb.representante = kiosko.representante
+        kioskodb.activo = kiosko.activo
+        kioskodb.admin_id = kiosko.admin_id
         session.commit()
 
     # close the session
@@ -84,10 +104,11 @@ async def update_kiosko(id: int, nombre: str, representante: str, activo: bool, 
 
 
 @router.delete("/kiosko/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["kiosko"])
-async def delete_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+#async def delete_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def delete_kiosko(id: int):
 
-    if current_user.rol != "superadmin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
+    #if current_user.rol != "superadmin":
+    #    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
    
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)

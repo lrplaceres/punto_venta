@@ -41,7 +41,7 @@ async def create_user(user: schemas.user.UserInDB):
 
 
 @router.get("/user", response_model=List[schemas.user.UserList], tags=["user"])
-#async def read_user(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+#async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 async def read_users_list():
     
     # create a new database session
@@ -49,6 +49,22 @@ async def read_users_list():
 
     # get the kiosko item with the given id
     usersdb = session.query(models.User).all()
+
+    # close the session
+    session.close()
+
+    return usersdb
+
+
+@router.get("/user/propietarios", response_model=List[schemas.user.UserList], tags=["user"])
+#async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def read_users_listpropietarios():
+    
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the kiosko item with the given id
+    usersdb = session.query(models.User).where(models.User.rol == "propietario",models.User.activo == "1")
 
     # close the session
     session.close()
@@ -76,28 +92,22 @@ async def read_user(id: int):
 
 
 @router.put("/user/{id}", tags=["user"])
-async def update_user(id: int, usuario:str, nombre:str, email:str, rol:str, activo:bool, password:str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+#async def update_user(id: int, usuario:str, nombre:str, email:str, rol:str, activo:bool, password:str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+#async def update_user(id: int, usuario:str,rol:str, activo:bool, password:str, nombre:str|None = None, email:str|None = None):
+async def update_user(id: int, user: schemas.user.UserEdit):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
-
-    #comprobar si existe usuario
-    usuario_buscado = session.query(models.User).where(models.User.usuario == user.usuario).count()
-
-    if usuario_buscado:
-        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED, detail=f"Usuario no disponible")
 
     # get the producto item with the given id
     userdb: schemas.user.UserInDB = session.query(models.User).get(id)    
     
     # update todo item with the given task (if an item with the given id was found)
     if userdb:
-        userdb.usuario = usuario 
-        userdb.nombre = nombre 
-        userdb.email = email 
-        userdb.rol = rol 
-        userdb.activo = activo
-        userdb.password = password
+        userdb.nombre = user.nombre 
+        userdb.email = user.email 
+        userdb.rol = user.rol 
+        userdb.activo = user.activo
         session.commit()
 
     # close the session
@@ -105,7 +115,8 @@ async def update_user(id: int, usuario:str, nombre:str, email:str, rol:str, acti
 
 
 @router.delete("/user/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["user"])
-async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+#async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def delete_user(id: int):
         
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)

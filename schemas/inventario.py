@@ -19,3 +19,6 @@ class Inventario(BaseModel):
     costo: float
     fecha: date
     kiosko_id: int
+
+    class Config:
+        orm_mode = True
