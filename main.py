@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from routers import kiosko, producto, inventario, venta, user
+from routers import kiosko, producto, inventario, venta, user, kioskos
 import schemas.token as schemaToken
 import schemas.user as schemaUser
 
@@ -35,6 +35,7 @@ app.include_router(producto.router)
 app.include_router(inventario.router)
 app.include_router(venta.router)
 app.include_router(user.router)
+app.include_router(kioskos.router)
 
 
 @app.post("/token", response_model=schemaToken.Token)

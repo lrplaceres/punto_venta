@@ -13,8 +13,7 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/user", response_model=schemas.user.User, status_code=status.HTTP_201_CREATED, tags=["user"])
-#async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-async def create_user(user: schemas.user.UserInDB):
+async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -41,8 +40,7 @@ async def create_user(user: schemas.user.UserInDB):
 
 
 @router.get("/user", response_model=List[schemas.user.UserList], tags=["user"])
-#async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-async def read_users_list():
+async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -57,8 +55,7 @@ async def read_users_list():
 
 
 @router.get("/user/propietarios", response_model=List[schemas.user.UserList], tags=["user"])
-#async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-async def read_users_listpropietarios():
+async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -73,8 +70,7 @@ async def read_users_listpropietarios():
 
 
 @router.get("/user/{id}", response_model=schemas.user.User, tags=["user"])
-#async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-async def read_user(id: int):
+async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -92,9 +88,7 @@ async def read_user(id: int):
 
 
 @router.put("/user/{id}", tags=["user"])
-#async def update_user(id: int, usuario:str, nombre:str, email:str, rol:str, activo:bool, password:str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-#async def update_user(id: int, usuario:str,rol:str, activo:bool, password:str, nombre:str|None = None, email:str|None = None):
-async def update_user(id: int, user: schemas.user.UserEdit):
+async def update_user(id: int, user: schemas.user.UserEdit, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -115,9 +109,8 @@ async def update_user(id: int, user: schemas.user.UserEdit):
 
 
 @router.delete("/user/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["user"])
-#async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-async def delete_user(id: int):
-        
+async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 

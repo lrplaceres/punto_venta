@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from database.database import Base, engine
 import schemas.kiosko
 import models.models as models
-import bcrypt
 import auth.auth as auth
 
 # Create the database
@@ -13,11 +12,10 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/kiosko", response_model=schemas.kiosko.Kiosko, status_code=status.HTTP_201_CREATED, tags=["kiosko"])
-#async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate):
+async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-    #if current_user.rol != "superadmin":
-    #    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -38,8 +36,7 @@ async def create_kiosko(kiosko: schemas.kiosko.KioskoCreate):
 
 
 @router.get("/kiosko", response_model=List[schemas.kiosko.Kiosko], tags=["kiosko"])
-#async def read_kiosko_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-async def read_kiosko_list():
+async def read_kiosko_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
     
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -54,9 +51,8 @@ async def read_kiosko_list():
 
 
 @router.get("/kiosko/{id}", tags=["kiosko"])
-#async def read_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
-async def read_kiosko(id: int):
-    
+async def read_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+ 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
@@ -79,8 +75,7 @@ async def read_kiosko(id: int):
 
 
 @router.put("/kiosko/{id}", tags=["kiosko"])
-#async def update_kiosko(id: int, nombre: str, representante: str, activo: bool, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-async def update_kiosko(id: int, kiosko: schemas.kiosko.KioskoCreate):
+async def update_kiosko(id: int, nombre: str, representante: str, activo: bool, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     #if current_user.rol != "superadmin" and current_user.rol != "propietario":
     #    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
@@ -104,11 +99,10 @@ async def update_kiosko(id: int, kiosko: schemas.kiosko.KioskoCreate):
 
 
 @router.delete("/kiosko/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["kiosko"])
-#async def delete_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-async def delete_kiosko(id: int):
+async def delete_kiosko(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-    #if current_user.rol != "superadmin":
-    #    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
    
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -125,3 +119,12 @@ async def delete_kiosko(id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Kiosko con id {id} no encontrado")
 
     return None
+
+
+
+
+
+
+
+
+
