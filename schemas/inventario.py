@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 
 # Create inventario Schema (Pydantic Model)
 class InventarioCreate(BaseModel):
@@ -7,8 +7,8 @@ class InventarioCreate(BaseModel):
     cantidad: float
     um: str
     costo: float
-    fecha: date
-    kiosko_id: int
+    fecha: datetime
+    negocio_id: int
     
 # Complete Inventario Schema (Pydantic Model)
 class Inventario(BaseModel):
@@ -17,8 +17,8 @@ class Inventario(BaseModel):
     cantidad: float
     um: str
     costo: float
-    fecha: date
-    kiosko_id: int
+    fecha: datetime
+    negocio_id: int
 
     class Config:
         orm_mode = True

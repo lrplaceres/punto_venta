@@ -46,7 +46,7 @@ class Inventario(Base):
     cantidad: Mapped[float] = Column(Float(2))
     um: Mapped[str]= Column(String(256))
     costo: Mapped[float] = Column(Float(2))
-    fecha: Mapped[date] = Column(Date)
+    fecha: Mapped[datetime]= Column(Date)
     negocio_id: Mapped[int]= Column(Integer, ForeignKey("negocio.id"))
 
     #ventas: Mapped[int] = relationship("Venta", back_populates = "inventario")

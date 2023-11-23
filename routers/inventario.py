@@ -18,15 +18,22 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate, tok
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    existe_kiosko = session.query(models.Kiosko).get(inventario.kiosko_id)
-    existe_producto = session.query(models.Producto).get(inventario.producto_id)
-    if not existe_kiosko:
-        raise HTTPException(status_code=412, detail=f"Inventario no autorizado")
+    existe_negocio = session.query(models.Negocio).get(inventario.negocio_id)
+
+    if not existe_negocio:
+        raise HTTPException(
+            status_code=412, detail=f"Inventario no autorizado")
+
+    existe_producto = session.query(
+        models.Producto).get(inventario.producto_id)
+
     if not existe_producto:
-        raise HTTPException(status_code=412, detail=f"Inventario no autorizado")
+        raise HTTPException(
+            status_code=412, detail=f"Inventario no autorizado")
 
     # create an instance of the ToDo database model
-    inventariodb = models.Integer(producto_id = inventario.producto_id, cantidad = inventario.cantidad, um = inventario.um, costo = inventario.costo, fecha = inventario.fecha, kiosko_id = inventario.kiosko_id)
+    inventariodb = models.Inventario(producto_id=inventario.producto_id, cantidad=inventario.cantidad,
+                                  um=inventario.um, costo=inventario.costo, fecha=inventario.fecha, negocio_id=inventario.negocio_id)
 
     # add it to the session and commit it
     session.add(inventariodb)
@@ -42,7 +49,7 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate, tok
 
 @router.get("/inventario/{id}", tags=["inventario"])
 async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
-    
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
@@ -53,31 +60,35 @@ async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_sch
     session.close()
 
     if not inventariodb:
-        raise HTTPException(status_code=404, detail=f"Inventario con id {id} no encontrado")
+        raise HTTPException(
+            status_code=404, detail=f"Inventario con id {id} no encontrado")
 
     return inventariodb
 
 
 @router.put("/inventario/{id}", tags=["inventario"])
-async def update_inventario(id: int, producto_id: int, cantidad: float, um: str, costo: float, fecha: date, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+async def update_inventario(id: int, inventario: schemas.inventario.Inventario, token: Annotated[str, Depends(auth.oauth2_scheme)]):
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    existe_producto = session.query(models.Producto).get(producto_id)
+    existe_producto = session.query(models.Producto).get(inventario.producto_id)
     if not existe_producto:
-        raise HTTPException(status_code=412, detail=f"Inventario no autorizado")
+        raise HTTPException(
+            status_code=412, detail=f"Inventario no autorizado")
 
     # get the producto item with the given id
-    inventariodb: schemas.inventario.Inventario = session.query(models.Inventario).get(id)    
-    
+    inventariodb: schemas.inventario.Inventario = session.query(
+        models.Inventario).get(id)
+
     # update todo item with the given task (if an item with the given id was found)
     if inventariodb:
-        inventariodb.producto_id = producto_id
-        inventariodb.cantidad = cantidad
-        inventariodb.um = um        
-        inventariodb.costo = costo     
-        inventariodb.fecha = fecha    
+        inventariodb.producto_id = inventario.producto_id
+        inventariodb.cantidad = inventario.cantidad
+        inventariodb.um = inventario.um
+        inventariodb.costo = inventario.costo
+        inventariodb.fecha = inventario.fecha
+        inventariodb.negocio_id = inventario.negocio_id
         session.commit()
 
     # close the session
@@ -86,7 +97,7 @@ async def update_inventario(id: int, producto_id: int, cantidad: float, um: str,
 
 @router.delete("/inventario/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["inventario"])
 async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
-        
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
@@ -99,6 +110,36 @@ async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_s
         session.commit()
         session.close()
     else:
-        raise HTTPException(status_code=404, detail=f"Inventario con id {id} no encontrado")
+        raise HTTPException(
+            status_code=404, detail=f"Inventario con id {id} no encontrado")
 
     return None
+
+
+@router.get("/inventarios/{usuario}", tags=["inventarios"])
+async def read_inventarios_propietario(usuario: str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the negocio item with the given id
+    puntosdb = session.query(models.Inventario.id,models.Producto.nombre, models.Inventario.cantidad, models.Negocio.nombre)\
+        .select_from(models.Inventario)\
+        .join(models.Negocio)\
+        .join(models.User)\
+        .join(models.Producto, models.Inventario.producto_id == models.Producto.id)\
+        .where(models.User.usuario == usuario)\
+        .all()
+
+    resultdb = []
+    for row in puntosdb:
+        resultdb.append({
+            "id": row[0],
+            "nombre": row[1],
+            "cantidad": row[2],
+            "negocio_id": row[3],
+        })
+
+
+    session.close()
+    return resultdb
