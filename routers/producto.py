@@ -11,27 +11,34 @@ Base.metadata.create_all(engine)
 
 router = APIRouter()
 
+
 @router.post("/producto", response_model=schemas.producto.Producto, status_code=status.HTTP_201_CREATED, tags=["producto"])
 async def create_producto(producto: schemas.producto.ProductoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     if current_user.rol != "propietario":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    #buscar si existe producto
-    existe_producto = session.query(models.Producto).where(models.Producto.nombre == producto.nombre, models.Producto.kiosko_id == producto.kiosko_id).count()
-    existe_kiosko = session.query(models.Kiosko).get(producto.kiosko_id)
-    if existe_producto:
-        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED, detail=f"El producto {producto.nombre} ya existe")
-    
-    if not existe_kiosko:
-        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED, detail=f"El kiosko {producto.kiosko_id} no existe")
+    # buscar si existe producto
+    existe_negocio = session.query(models.Negocio).get(producto.negocio_id)
 
+    if not existe_negocio:
+        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
+                            detail=f"El Negocio {producto.negocio_id} no existe")
+
+    existe_producto = session.query(models.Producto).where(
+        models.Producto.nombre == producto.nombre, models.Producto.negocio_id == producto.negocio_id).count()
+
+    if existe_producto:
+        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
+                            detail=f"El producto {producto.nombre} ya existe")
 
     # create an instance of the ToDo database model
-    productodb = models.Producto(nombre = producto.nombre, kiosko_id = producto.kiosko_id)
+    productodb = models.Producto(
+        nombre=producto.nombre, negocio_id=producto.negocio_id)
 
     # add it to the session and commit it
     session.add(productodb)
@@ -47,9 +54,10 @@ async def create_producto(producto: schemas.producto.ProductoCreate, token: Anno
 
 @router.get("/producto/{id}", tags=["producto"])
 async def read_producto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-    
+
     if current_user.rol != "propietario":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -61,29 +69,30 @@ async def read_producto(id: int, token: Annotated[str, Depends(auth.oauth2_schem
     session.close()
 
     if not productodb:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"El producto con id {id} no encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"El producto con id {id} no encontrado")
 
     return productodb
 
 
 @router.put("/producto/{id}", tags=["producto"])
-async def update_producto(id: int, nombre: str, kiosko_id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-    
+async def update_producto(id: int, producto: schemas.producto.Producto, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
     if current_user.rol != "propietario":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the producto item with the given id
-    productodb: schemas.producto.Producto = session.query(models.Producto).get(id)
-    
-    if productodb.kiosko_id != kiosko_id:
-         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Producto no autorizado")
-    
+    productodb: schemas.producto.Producto = session.query(
+        models.Producto).get(id)
+
     # update todo item with the given task (if an item with the given id was found)
     if productodb:
-        productodb.nombre = nombre
+        productodb.nombre = producto.nombre
+        productodb.negocio_id = producto.negocio_id
         session.commit()
 
     # close the session
@@ -94,8 +103,9 @@ async def update_producto(id: int, nombre: str, kiosko_id: int, token: Annotated
 async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     if current_user.rol != "propietario":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
-    
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
@@ -108,6 +118,34 @@ async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_sch
         session.commit()
         session.close()
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"El producto con id {id} no encontrado")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"El producto con id {id} no encontrado")
 
     return None
+
+
+@router.get("/productos/{usuario}", response_model=List[schemas.producto.Producto], tags=["productos"])
+async def read_productos_propietario(usuario: str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    negociosdb = session.query(models.Producto.id, models.Producto.nombre, models.Negocio.nombre)\
+        .join(models.Negocio)\
+        .join(models.User)\
+        .where(models.User.usuario == usuario)\
+        .all()
+
+    resultdb = []
+
+    for row in negociosdb:
+        resultdb.append({
+            "id": row[0],
+            "nombre": row[1],
+            "negocio_id": row[2]
+        })
+
+    # close the session
+    session.close()
+
+    return resultdb

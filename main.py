@@ -1,8 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from routers import kiosko, producto, inventario, venta, user, kioskos
+from routers import user, negocio, punto, producto
 import schemas.token as schemaToken
 import schemas.user as schemaUser
-
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import auth.auth as auth
@@ -30,12 +29,10 @@ app.add_middleware(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-app.include_router(kiosko.router)
+app.include_router(negocio.router)
+app.include_router(punto.router)
 app.include_router(producto.router)
-app.include_router(inventario.router)
-app.include_router(venta.router)
 app.include_router(user.router)
-app.include_router(kioskos.router)
 
 
 @app.post("/token", response_model=schemaToken.Token)
