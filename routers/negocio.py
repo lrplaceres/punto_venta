@@ -15,6 +15,7 @@ router = APIRouter()
 @router.post("/negocio", response_model=schemas.negocio.Negocio, status_code=status.HTTP_201_CREATED, tags=["negocio"])
 async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    #validando rol de usuario autenticado
     if current_user.rol != "superadmin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -24,10 +25,10 @@ async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotate
 
     # create an instance of the ToDo database model
     negociodb = models.Negocio(nombre=negocio.nombre, direccion=negocio.direccion,
-                              informacion=negocio.informacion,
-                              fecha_licencia=negocio.fecha_licencia,
-                              activo=negocio.activo,
-                              propietario_id=negocio.propietario_id)
+                               informacion=negocio.informacion,
+                               fecha_licencia=negocio.fecha_licencia,
+                               activo=negocio.activo,
+                               propietario_id=negocio.propietario_id)
 
     # add it to the session and commit it
     session.add(negociodb)
@@ -44,6 +45,11 @@ async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotate
 @router.get("/negocio", response_model=List[schemas.negocio.Negocio], tags=["negocio"])
 async def read_negocio_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
@@ -57,7 +63,12 @@ async def read_negocio_list(token: Annotated[str, Depends(auth.oauth2_scheme)], 
 
 
 @router.get("/negocio/{id}", response_model=schemas.negocio.Negocio, tags=["negocio"])
-async def read_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+async def read_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -78,9 +89,11 @@ async def read_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
 @router.put("/negocio/{id}", tags=["negocio"])
 async def update_negocio(id: int, negocio: schemas.negocio.NegocioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-    # if current_user.rol != "superadmin" and current_user.rol != "propietario":
-    #    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No está autorizado a realizar esta acción")
-
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+   
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
@@ -89,14 +102,14 @@ async def update_negocio(id: int, negocio: schemas.negocio.NegocioCreate, token:
 
     # update todo item with the given task (if an item with the given id was found)
     if negociodb:
-       negociodb.nombre = negocio.nombre
-       negociodb.direccion = negocio.direccion
-       negociodb.informacion = negocio.informacion
-       negociodb.fecha_licencia = negocio.fecha_licencia
-       negociodb.activo = negocio.activo
-       negociodb.propietario_id = negocio.propietario_id
+        negociodb.nombre = negocio.nombre
+        negociodb.direccion = negocio.direccion
+        negociodb.informacion = negocio.informacion
+        negociodb.fecha_licencia = negocio.fecha_licencia
+        negociodb.activo = negocio.activo
+        negociodb.propietario_id = negocio.propietario_id
 
-       session.commit()
+        session.commit()
 
     # close the session
     session.close()
@@ -105,6 +118,7 @@ async def update_negocio(id: int, negocio: schemas.negocio.NegocioCreate, token:
 @router.delete("/negocio/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["negocio"])
 async def delete_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    #validando rol de usuario autenticado
     if current_user.rol != "superadmin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -127,16 +141,20 @@ async def delete_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_sche
     return None
 
 
-@router.get("/negocios/{usuario}", response_model=List[schemas.negocio.Negocio], tags=["negocios"])
-async def read_negocios_propietario(usuario: str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.get("/negocios/", response_model=List[schemas.negocio.Negocio], tags=["negocios"])
+async def read_negocios_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    negociosdb = session.query(models.Negocio).join(models.User).where(models.User.usuario == usuario).all()
-
-    # get the negocio item with the given id
-    #negociodb = session.query(models.Negocio).all()
+    negociosdb = session.query(models.Negocio).join(
+        models.User).where(models.User.usuario == current_user.usuario).all()
+  
 
     # close the session
     session.close()

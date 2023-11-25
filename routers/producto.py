@@ -15,6 +15,7 @@ router = APIRouter()
 @router.post("/producto", response_model=schemas.producto.Producto, status_code=status.HTTP_201_CREATED, tags=["producto"])
 async def create_producto(producto: schemas.producto.ProductoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    #validando rol de usuario autenticado
     if current_user.rol != "propietario":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -55,6 +56,7 @@ async def create_producto(producto: schemas.producto.ProductoCreate, token: Anno
 @router.get("/producto/{id}", tags=["producto"])
 async def read_producto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    #validando rol de usuario autenticado
     if current_user.rol != "propietario":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -78,6 +80,7 @@ async def read_producto(id: int, token: Annotated[str, Depends(auth.oauth2_schem
 @router.put("/producto/{id}", tags=["producto"])
 async def update_producto(id: int, producto: schemas.producto.Producto, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    #validando rol de usuario autenticado
     if current_user.rol != "propietario":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -102,6 +105,7 @@ async def update_producto(id: int, producto: schemas.producto.Producto, token: A
 @router.delete("/producto/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["producto"])
 async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    #validando rol de usuario autenticado
     if current_user.rol != "propietario":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -124,16 +128,21 @@ async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_sch
     return None
 
 
-@router.get("/productos/{usuario}", response_model=List[schemas.producto.Producto], tags=["productos"])
-async def read_productos_propietario(usuario: str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.get("/productos/", response_model=List[schemas.producto.Producto], tags=["productos"])
+async def read_productos_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    #validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+                            
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
     negociosdb = session.query(models.Producto.id, models.Producto.nombre, models.Negocio.nombre)\
         .join(models.Negocio)\
         .join(models.User)\
-        .where(models.User.usuario == usuario)\
+        .where(models.User.usuario == current_user.usuario)\
         .all()
 
     resultdb = []

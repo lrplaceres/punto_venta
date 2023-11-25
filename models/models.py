@@ -14,10 +14,10 @@ class Negocio(Base):
     activo: Mapped[bool] = Column(Boolean, default=False)
     propietario_id: Mapped[int]= Column(Integer, ForeignKey("user.id"))
 
-    inventarios: Mapped[int] = relationship("Inventario", back_populates = "negocios")
     propietarios: Mapped[int] = relationship("User", back_populates = "negocios")
-    puntos: Mapped[int] = relationship("Punto", back_populates = "negocios")
-    productos: Mapped[int] = relationship("Producto", back_populates="negocios")
+    puntos: Mapped[int] = relationship("Punto", back_populates = "negocios", cascade="all, delete-orphan")
+    productos: Mapped[int] = relationship("Producto", back_populates="negocios", cascade="all, delete-orphan")
+    inventarios: Mapped[int] = relationship("Inventario", back_populates = "negocios", cascade="all, delete-orphan")
 
 class Punto(Base):
     __tablename__ = 'punto'
@@ -36,7 +36,7 @@ class Producto(Base):
     negocio_id: Mapped[int] = Column(Integer, ForeignKey("negocio.id"))
 
     negocios: Mapped[int] = relationship("Negocio", back_populates = "productos")
-    inventarios: Mapped[int] = relationship("Inventario", back_populates = "productos")
+    inventarios: Mapped[int] = relationship("Inventario", back_populates = "productos", cascade="all, delete-orphan")
 
 
 class Inventario(Base):

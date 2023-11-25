@@ -16,10 +16,24 @@ router = APIRouter()
 @router.post("/punto", response_model=schemas.punto.Punto, status_code=status.HTTP_201_CREATED, tags=["punto"])
 async def create_punto(punto: schemas.punto.PuntoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # create an instance of the Negocio database model
+    # verificar si usuario autenticado es propietario del negocio
+    prop_negocio = session.query(models.Negocio)\
+        .where(models.Negocio.id == punto.negocio_id, models.Negocio.propietario_id == current_user.id)\
+        .count()
+
+    if not prop_negocio:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create an instance of the Punto database model
     puntodb = models.Punto(
         nombre=punto.nombre, direccion=punto.direccion, negocio_id=punto.negocio_id)
 
@@ -36,13 +50,28 @@ async def create_punto(punto: schemas.punto.PuntoCreate, token: Annotated[str, D
 
 
 @router.get("/punto/{id}", response_model=schemas.punto.Punto, tags=["punto"])
-async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the kiosko item with the given id
-    puntodb = session.query(models.Punto).get(id)
+    # get the punto item with the given id
+    puntodb: schemas.punto.Punto = session.query(models.Punto).get(id)
+
+    # verificar si usuario autenticado es propietario del negocio
+    if puntodb:
+        prop_negocio = session.query(models.Negocio)\
+            .where(models.Negocio.id == puntodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .count()
+
+        if not prop_negocio:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
 
     # close the session
     session.close()
@@ -57,19 +86,34 @@ async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
 @router.put("/punto/{id}", tags=["punto"])
 async def update_punto(id: int, punto: schemas.punto.PuntoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the provincia item with the given id
     puntodb: schemas.punto.Punto = session.query(models.Punto).get(id)
 
+    # verificar si usuario autenticado es propietario del negocio
+    if puntodb:
+        prop_negocio = session.query(models.Negocio)\
+            .where(models.Negocio.id == puntodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .count()
+
+        if not prop_negocio:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
+
     # update todo item with the given task (if an item with the given id was found)
     if puntodb:
-       puntodb.nombre = punto.nombre
-       puntodb.direccion = punto.direccion
-       puntodb.negocio_id = punto.negocio_id
+        puntodb.nombre = punto.nombre
+        puntodb.direccion = punto.direccion
+        puntodb.negocio_id = punto.negocio_id
 
-       session.commit()
+        session.commit()
 
     # close the session
     session.close()
@@ -78,12 +122,26 @@ async def update_punto(id: int, punto: schemas.punto.PuntoCreate, token: Annotat
 @router.delete("/punto/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["punto"])
 async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-   
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the todo item with the given id
-    puntodb = session.query(models.Punto).get(id)
+    puntodb: schemas.punto.Punto = session.query(models.Punto).get(id)
+
+    # verificar si usuario autenticado es propietario del negocio
+    if puntodb:
+        prop_negocio = session.query(models.Negocio)\
+            .where(models.Negocio.id == puntodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .count()
+
+        if not prop_negocio:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
 
     # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
     if puntodb:
@@ -97,17 +155,22 @@ async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     return None
 
 
-@router.get("/puntos/{usuario}",response_model=List[schemas.punto.Punto], tags=["puntos"])
-async def read_puntos_propietario(usuario: str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.get("/puntos/", response_model=List[schemas.punto.Punto], tags=["puntos"])
+async def read_puntos_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the negocio item with the given id
-    puntosdb = session.query(models.Punto.id,models.Punto.nombre, models.Punto.direccion, models.Negocio.nombre)\
+    puntosdb = session.query(models.Punto.id, models.Punto.nombre, models.Punto.direccion, models.Negocio.nombre)\
         .join(models.Negocio)\
         .join(models.User)\
-        .where(models.User.usuario == usuario)\
+        .where(models.User.usuario == current_user.usuario)\
         .order_by(models.Punto.nombre)\
         .all()
 
@@ -120,7 +183,5 @@ async def read_puntos_propietario(usuario: str, token: Annotated[str, Depends(au
             "negocio_id": row[3]
         })
 
-
     session.close()
     return resultdb
-

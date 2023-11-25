@@ -13,7 +13,12 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 @router.post("/inventario", response_model=schemas.inventario.Inventario, status_code=status.HTTP_201_CREATED, tags=["inventario"])
-async def create_inventario(inventario: schemas.inventario.InventarioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+async def create_inventario(inventario: schemas.inventario.InventarioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -48,7 +53,12 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate, tok
 
 
 @router.get("/inventario/{id}", tags=["inventario"])
-async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -67,7 +77,12 @@ async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_sch
 
 
 @router.put("/inventario/{id}", tags=["inventario"])
-async def update_inventario(id: int, inventario: schemas.inventario.Inventario, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+async def update_inventario(id: int, inventario: schemas.inventario.Inventario, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -96,7 +111,12 @@ async def update_inventario(id: int, inventario: schemas.inventario.Inventario, 
 
 
 @router.delete("/inventario/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["inventario"])
-async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]):
+async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -116,8 +136,13 @@ async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_s
     return None
 
 
-@router.get("/inventarios/{usuario}", tags=["inventarios"])
-async def read_inventarios_propietario(usuario: str, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.get("/inventarios/", tags=["inventarios"])
+async def read_inventarios_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -128,7 +153,7 @@ async def read_inventarios_propietario(usuario: str, token: Annotated[str, Depen
         .join(models.Negocio)\
         .join(models.User)\
         .join(models.Producto, models.Inventario.producto_id == models.Producto.id)\
-        .where(models.User.usuario == usuario)\
+        .where(models.User.usuario == current_user.usuario)\
         .all()
 
     resultdb = []

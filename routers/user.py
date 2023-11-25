@@ -12,20 +12,29 @@ Base.metadata.create_all(engine)
 
 router = APIRouter()
 
+
 @router.post("/user", response_model=schemas.user.User, status_code=status.HTTP_201_CREATED, tags=["user"])
 async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    #comprobar si existe usuario
-    usuario_buscado = session.query(models.User).where(models.User.usuario == user.usuario).count()
+    # comprobar si existe usuario
+    usuario_buscado = session.query(models.User).where(
+        models.User.usuario == user.usuario).count()
 
     if usuario_buscado:
-        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED, detail=f"Usuario no disponible")
-    
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED, detail=f"Usuario no disponible")
+
     # create an instance of the ToDo database model
-    userdb = models.User(usuario = user.usuario, nombre = user.nombre, email = user.email, rol = user.rol, activo =  user.activo, password = auth.pwd_context.hash(user.password))
+    userdb = models.User(usuario=user.usuario, nombre=user.nombre, email=user.email,
+                         rol=user.rol, activo=user.activo, password=auth.pwd_context.hash(user.password))
 
     # add it to the session and commit it
     session.add(userdb)
@@ -41,7 +50,12 @@ async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends
 
 @router.get("/user", response_model=List[schemas.user.UserList], tags=["user"])
 async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-    
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
@@ -56,12 +70,18 @@ async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], cu
 
 @router.get("/user/propietarios", response_model=List[schemas.user.UserList], tags=["user"])
 async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-    
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the kiosko item with the given id
-    usersdb = session.query(models.User).where(models.User.rol == "propietario",models.User.activo == "1")
+    usersdb = session.query(models.User).where(
+        models.User.rol == "propietario", models.User.activo == "1")
 
     # close the session
     session.close()
@@ -71,7 +91,12 @@ async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_
 
 @router.get("/user/{id}", response_model=schemas.user.User, tags=["user"])
 async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-    
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
@@ -82,7 +107,8 @@ async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)],
     session.close()
 
     if not userdb:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user item with id {id} not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"user item with id {id} not found")
 
     return userdb
 
@@ -90,17 +116,22 @@ async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)],
 @router.put("/user/{id}", tags=["user"])
 async def update_user(id: int, user: schemas.user.UserEdit, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
+    # validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the producto item with the given id
-    userdb: schemas.user.UserInDB = session.query(models.User).get(id)    
-    
+    userdb: schemas.user.UserInDB = session.query(models.User).get(id)
+
     # update todo item with the given task (if an item with the given id was found)
     if userdb:
-        userdb.nombre = user.nombre 
-        userdb.email = user.email 
-        userdb.rol = user.rol 
+        userdb.nombre = user.nombre
+        userdb.email = user.email
+        userdb.rol = user.rol
         userdb.activo = user.activo
         session.commit()
 
@@ -110,6 +141,11 @@ async def update_user(id: int, user: schemas.user.UserEdit, token: Annotated[str
 
 @router.delete("/user/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["user"])
 async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
@@ -123,6 +159,7 @@ async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
         session.commit()
         session.close()
     else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"inventario item with id {id} not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"inventario item with id {id} not found")
 
     return None
