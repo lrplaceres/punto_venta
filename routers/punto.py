@@ -66,7 +66,8 @@ async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
     # verificar si usuario autenticado es propietario del negocio
     if puntodb:
         prop_negocio = session.query(models.Negocio)\
-            .where(models.Negocio.id == puntodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .where(models.Negocio.id == producto.negocio_id,
+             models.Negocio.propietario_id == current_user.id)\
             .count()
 
         if not prop_negocio:

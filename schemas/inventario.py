@@ -7,6 +7,7 @@ class InventarioCreate(BaseModel):
     cantidad: float
     um: str
     costo: float
+    precio_venta: float
     fecha: datetime
     negocio_id: int
     
@@ -17,6 +18,7 @@ class Inventario(BaseModel):
     cantidad: float
     um: str
     costo: float
+    precio_venta: float
     fecha: datetime
     negocio_id: int
 

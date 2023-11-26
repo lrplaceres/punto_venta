@@ -26,27 +26,25 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate, tok
 
     # verificar si usuario autenticado es propietario del negocio
     prop_negocio = session.query(models.Negocio)\
-        .where(models.Negocio.id == inventario.negocio_id,\
-            models.Negocio.propietario_id == current_user.id)\
+        .where(models.Negocio.id == inventario.negocio_id,
+               models.Negocio.propietario_id == current_user.id)\
         .count()
 
-    if not prop_negocio:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=f"No está autorizado a realizar esta acción")
-
+    # verificar si usuario autenticado es propietario del producto
     prop_producto = session.query(models.Producto)\
         .join(models.Negocio)\
-        .where(models.Negocio.id == inventario.negocio_id,\
-            models.Producto.id == inventario.producto_id)\
+        .where(models.Negocio.id == inventario.negocio_id,
+               models.Producto.id == inventario.producto_id)\
         .count()
 
-    if not prop_producto:
+    if not prop_producto or not prop_negocio:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
-    # create an instance of the ToDo database model
+    # create an instance of the Inventario database model
     inventariodb = models.Inventario(producto_id=inventario.producto_id, cantidad=inventario.cantidad,
-                                     um=inventario.um, costo=inventario.costo, fecha=inventario.fecha, negocio_id=inventario.negocio_id)
+                                     um=inventario.um, costo=inventario.costo, precio_venta=inventario.precio_venta,
+                                     fecha=inventario.fecha, negocio_id=inventario.negocio_id)
 
     # add it to the session and commit it
     session.add(inventariodb)
@@ -60,7 +58,7 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate, tok
     return inventariodb
 
 
-@router.get("/inventario/{id}", tags=["inventario"])
+@router.get("/inventario/{id}",response_model=schemas.inventario.Inventario, tags=["inventario"])
 async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -72,7 +70,8 @@ async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_sch
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the kiosko item with the given id
-    inventariodb = session.query(models.Inventario).get(id)
+    inventariodb: schemas.inventario.Inventario = session.query(
+        models.Inventario).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
     if inventariodb:
@@ -112,7 +111,8 @@ async def update_inventario(id: int, inventario: schemas.inventario.Inventario, 
     # verificar si usuario autenticado es propietario del negocio
     if inventariodb:
         prop_negocio = session.query(models.Negocio)\
-            .where(models.Negocio.id == inventariodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .where(models.Negocio.id == inventario.negocio_id,
+             models.Negocio.propietario_id == current_user.id)\
             .count()
 
         if not prop_negocio:
@@ -125,6 +125,7 @@ async def update_inventario(id: int, inventario: schemas.inventario.Inventario, 
         inventariodb.cantidad = inventario.cantidad
         inventariodb.um = inventario.um
         inventariodb.costo = inventario.costo
+        inventariodb.precio_venta = inventario.precio_venta
         inventariodb.fecha = inventario.fecha
         inventariodb.negocio_id = inventario.negocio_id
         session.commit()
@@ -145,7 +146,8 @@ async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_s
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the todo item with the given id
-    inventariodb = session.query(models.Inventario).get(id)
+    inventariodb: schemas.inventario.Inventario = session.query(
+        models.Inventario).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
     if inventariodb:
@@ -181,7 +183,8 @@ async def read_inventarios_propietario(token: Annotated[str, Depends(auth.oauth2
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the negocio item with the given id
-    puntosdb = session.query(models.Inventario.id, models.Producto.nombre, models.Inventario.cantidad, models.Negocio.nombre)\
+    puntosdb = session.query(models.Inventario.id, models.Producto.nombre, models.Inventario.cantidad\
+        , models.Negocio.nombre, models.Inventario.costo, models.Inventario.fecha, models.Inventario.precio_venta)\
         .select_from(models.Inventario)\
         .join(models.Negocio)\
         .join(models.User)\
@@ -196,6 +199,9 @@ async def read_inventarios_propietario(token: Annotated[str, Depends(auth.oauth2
             "nombre": row[1],
             "cantidad": row[2],
             "negocio_id": row[3],
+            "costo": row[4],
+            "fecha": row[5],
+            "precio_venta": row[6],
         })
 
     session.close()

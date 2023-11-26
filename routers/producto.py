@@ -107,7 +107,8 @@ async def update_producto(id: int, producto: schemas.producto.Producto, token: A
     # verificar si usuario autenticado es propietario del negocio
     if productodb:
         prop_negocio = session.query(models.Negocio)\
-            .where(models.Negocio.id == productodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .where(models.Negocio.id == producto.negocio_id,
+             models.Negocio.propietario_id == current_user.id)\
             .count()
 
         if not prop_negocio:
