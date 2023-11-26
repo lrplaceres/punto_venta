@@ -23,12 +23,14 @@ async def create_producto(producto: schemas.producto.ProductoCreate, token: Anno
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # buscar si existe producto
-    existe_negocio = session.query(models.Negocio).get(producto.negocio_id)
+    # verificar si usuario autenticado es propietario del negocio
+    prop_negocio = session.query(models.Negocio)\
+        .where(models.Negocio.id == producto.negocio_id, models.Negocio.propietario_id == current_user.id)\
+        .count()
 
-    if not existe_negocio:
-        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
-                            detail=f"El Negocio {producto.negocio_id} no existe")
+    if not prop_negocio:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
 
     existe_producto = session.query(models.Producto).where(
         models.Producto.nombre == producto.nombre, models.Producto.negocio_id == producto.negocio_id).count()
@@ -67,6 +69,16 @@ async def read_producto(id: int, token: Annotated[str, Depends(auth.oauth2_schem
     # get the kiosko item with the given id
     productodb = session.query(models.Producto).get(id)
 
+    # verificar si usuario autenticado es propietario del negocio
+    if productodb:
+        prop_negocio = session.query(models.Negocio)\
+            .where(models.Negocio.id == productodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .count()
+
+        if not prop_negocio:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
+
     # close the session
     session.close()
 
@@ -92,6 +104,16 @@ async def update_producto(id: int, producto: schemas.producto.Producto, token: A
     productodb: schemas.producto.Producto = session.query(
         models.Producto).get(id)
 
+    # verificar si usuario autenticado es propietario del negocio
+    if productodb:
+        prop_negocio = session.query(models.Negocio)\
+            .where(models.Negocio.id == productodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .count()
+
+        if not prop_negocio:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
+
     # update todo item with the given task (if an item with the given id was found)
     if productodb:
         productodb.nombre = producto.nombre
@@ -115,6 +137,16 @@ async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_sch
 
     # get the todo item with the given id
     productodb = session.query(models.Producto).get(id)
+
+    # verificar si usuario autenticado es propietario del negocio
+    if productodb:
+        prop_negocio = session.query(models.Negocio)\
+            .where(models.Negocio.id == productodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .count()
+
+        if not prop_negocio:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
 
     # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
     if productodb:
