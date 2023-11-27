@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
+import sqlalchemy as db 
 from database.database import Base, engine
 import schemas.distribucion
 import models.models as models
@@ -26,10 +27,11 @@ async def create_distribucion(distribucion: schemas.distribucion.DistribucionCre
     # verificar si usuario autenticado es propietario del negocio buscando por punto
     prop_negocio = session.query(models.Punto)\
         .join(models.Negocio)\
-        .where(models.Negocio.id == distribucion.punto_id,
+        .where(models.Punto.id == distribucion.punto_id,
                models.Negocio.propietario_id == current_user.id)\
         .count()
 
+    print(prop_negocio)
     # verificar si usuario autenticado es propietario del inventario
     prop_inventario = session.query(models.Inventario)\
         .join(models.Negocio)\
@@ -78,7 +80,7 @@ async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_s
         # verificar si usuario autenticado es propietario del negocio buscando por punto
         prop_negocio = session.query(models.Punto)\
             .join(models.Negocio)\
-            .where(models.Negocio.id == distribuciondb.punto_id,
+            .where(models.Punto.id == distribuciondb.punto_id,
                    models.Negocio.propietario_id == current_user.id)\
             .count()
 
@@ -123,7 +125,7 @@ async def update_distribucion(id: int, distribucion: schemas.distribucion.Distri
         # verificar si usuario autenticado es propietario del negocio buscando por punto
         prop_negocio = session.query(models.Punto)\
             .join(models.Negocio)\
-            .where(models.Negocio.id == distribucion.punto_id,
+            .where(models.Punto.id == distribucion.punto_id,
                    models.Negocio.propietario_id == current_user.id)\
             .count()
 
@@ -170,7 +172,7 @@ async def delete_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2
         # verificar si usuario autenticado es propietario del negocio buscando por punto
         prop_negocio = session.query(models.Punto)\
             .join(models.Negocio)\
-            .where(models.Negocio.id == distribuciondb.punto_id,
+            .where(models.Punto.id == distribuciondb.punto_id,
                    models.Negocio.propietario_id == current_user.id)\
             .count()
 

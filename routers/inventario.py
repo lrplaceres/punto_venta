@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
+import sqlalchemy as db 
 from database.database import Base, engine
 import schemas.inventario
 import models.models as models
@@ -69,7 +70,7 @@ async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_sch
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the kiosko item with the given id
+    # get the inventario item with the given id
     inventariodb: schemas.inventario.Inventario = session.query(
         models.Inventario).get(id)
 
@@ -206,3 +207,61 @@ async def read_inventarios_propietario(token: Annotated[str, Depends(auth.oauth2
 
     session.close()
     return resultdb
+
+
+#inventarios que es posible distribuir
+@router.get("/inventarios-a-distribuir/", tags=["inventarios"])
+async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+        # get the inventario item with the given id
+    inventariosdb = session.query(models.Inventario.id,
+                                 models.Producto.nombre,
+                                 models.Inventario.cantidad,
+                                 db.func.coalesce((models.Distribucion.cantidad),0),
+                                 models.Inventario.costo,\
+                                 models.Inventario.fecha )\
+        .select_from(models.Inventario)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
+        .join(models.User, models.User.id == models.Negocio.propietario_id)\
+        .outerjoin(models.Distribucion, models.Distribucion.inventario_id == models.Inventario.id)\
+        .where(models.User.usuario == current_user.usuario)\
+        .order_by(models.Producto.nombre)\
+        .all()
+         
+
+    resultdb = []
+    for row in inventariosdb:
+        if row[2] - row[3]:        
+            resultdb.append({
+                "id": row[0],
+                "nombre": row[1],
+                "cantidad": row[2],
+                "distribuido": row[3],
+                "costo": row[4],
+                "fecha": row[5],
+        })
+
+    session.close()
+
+    if not inventariosdb:
+        raise HTTPException(
+            status_code=404, detail=f"Inventarios no encontrados")
+
+    return resultdb
+
+
+
+
+
+
+
+
