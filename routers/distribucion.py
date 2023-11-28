@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
-import sqlalchemy as db 
+import sqlalchemy as db
 from database.database import Base, engine
 import schemas.distribucion
 import models.models as models
@@ -60,7 +60,7 @@ async def create_distribucion(distribucion: schemas.distribucion.DistribucionCre
     return distribuciondb
 
 
-@router.get("/distribucion/{id}", response_model=schemas.distribucion.Distribucion, tags=["distribucion"])
+@router.get("/distribucion/{id}", tags=["distribucion"])
 async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -73,21 +73,35 @@ async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_s
 
     # get the kiosko item with the given id
     distribuciondb: schemas.distribucion.Distribucion = session.query(
-        models.Distribucion).get(id)
+        models.Distribucion.id, models.Distribucion.cantidad, models.Distribucion.fecha,
+        models.Distribucion.inventario_id, models.Distribucion.punto_id,
+        models.Inventario.negocio_id)\
+        .join(models.Inventario)\
+        .where(models.Distribucion.id == id)\
+        .first()
+    print(distribuciondb)
+    resultdb: dict = {
+        "id": distribuciondb[0],
+        "cantidad": distribuciondb[1],
+        "fecha": distribuciondb[2],
+        "inventario_id": distribuciondb[3],
+        "punto_id": distribuciondb[4],
+        "negocio_id": distribuciondb[5],
+    }
 
     # verificar si usuario autenticado es propietario del negocio
     if distribuciondb:
         # verificar si usuario autenticado es propietario del negocio buscando por punto
         prop_negocio = session.query(models.Punto)\
             .join(models.Negocio)\
-            .where(models.Punto.id == distribuciondb.punto_id,
+            .where(models.Punto.id == resultdb.get("punto_id"),
                    models.Negocio.propietario_id == current_user.id)\
             .count()
 
         # verificar si usuario autenticado es propietario del inventario
         prop_inventario = session.query(models.Inventario)\
             .join(models.Negocio)\
-            .where(models.Inventario.id == distribuciondb.inventario_id,
+            .where(models.Inventario.id == resultdb.get("inventario_id"),
                    models.Negocio.propietario_id == current_user.id)\
             .count()
 
@@ -102,7 +116,7 @@ async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_s
         raise HTTPException(
             status_code=404, detail=f"Distribución con id {id} no encontrada")
 
-    return distribuciondb
+    return resultdb
 
 
 @router.put("/distribucion/{id}", tags=["distribucion"])
@@ -142,10 +156,10 @@ async def update_distribucion(id: int, distribucion: schemas.distribucion.Distri
 
     # update todo item with the given task (if an item with the given id was found)
     if distribuciondb:
-        distribuciondb.inventario_id = distribucion.inventario_id        
-        distribuciondb.cantidad = distribucion.cantidad        
-        distribuciondb.fecha = distribucion.fecha        
-        distribuciondb.punto_id = distribucion.punto_id        
+        distribuciondb.inventario_id = distribucion.inventario_id
+        distribuciondb.cantidad = distribucion.cantidad
+        distribuciondb.fecha = distribucion.fecha
+        distribuciondb.punto_id = distribucion.punto_id
         session.commit()
 
     # close the session
@@ -213,7 +227,8 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
     # get the distribuciones item with the given id
     distribucionesdb = session.query(models.Distribucion.id, models.Distribucion.cantidad,
                                      models.Distribucion.fecha, models.Punto.nombre,
-                                     models.Negocio.nombre, models.Producto.nombre)\
+                                     models.Negocio.nombre, models.Producto.nombre,
+                                     models.Inventario.costo)\
         .select_from(models.Distribucion)\
         .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
         .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
@@ -232,6 +247,7 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
             "punto_id": row[3],
             "negocio_id": row[4],
             "producto_id": row[5],
+            "costo": row[6],
         })
 
     session.close()

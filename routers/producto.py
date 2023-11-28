@@ -161,7 +161,7 @@ async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_sch
     return None
 
 
-@router.get("/productos/", response_model=List[schemas.producto.Producto], tags=["productos"])
+@router.get("/productos/", tags=["productos"])
 async def read_productos_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     #validando rol de usuario autenticado
@@ -172,7 +172,8 @@ async def read_productos_propietario(token: Annotated[str, Depends(auth.oauth2_s
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    negociosdb = session.query(models.Producto.id, models.Producto.nombre, models.Negocio.nombre)\
+    negociosdb = session.query(models.Producto.id, models.Producto.nombre,
+                                models.Negocio.id, models.Negocio.nombre)\
         .join(models.Negocio)\
         .join(models.User)\
         .where(models.User.usuario == current_user.usuario)\
@@ -184,7 +185,8 @@ async def read_productos_propietario(token: Annotated[str, Depends(auth.oauth2_s
         resultdb.append({
             "id": row[0],
             "nombre": row[1],
-            "negocio_id": row[2]
+            "negocio_id": row[2],
+            "negocio_nombre": row[3]
         })
 
     # close the session

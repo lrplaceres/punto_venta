@@ -224,30 +224,34 @@ async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oau
         # get the inventario item with the given id
     inventariosdb = session.query(models.Inventario.id,
                                  models.Producto.nombre,
-                                 models.Inventario.cantidad,
-                                 db.func.coalesce((models.Distribucion.cantidad),0),
+                                 db.func.sum(db.func.coalesce((models.Inventario.cantidad),0)),
+                                 models.Inventario.fecha,
                                  models.Inventario.costo,\
-                                 models.Inventario.fecha )\
+                                 db.func.sum(db.func.coalesce((models.Distribucion.cantidad),0)),
+                                 models.Inventario.negocio_id,
+                                  )\
         .select_from(models.Inventario)\
         .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
         .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
         .join(models.User, models.User.id == models.Negocio.propietario_id)\
         .outerjoin(models.Distribucion, models.Distribucion.inventario_id == models.Inventario.id)\
         .where(models.User.usuario == current_user.usuario)\
+        .group_by(models.Inventario.producto_id, models.Inventario.costo)\
         .order_by(models.Producto.nombre)\
         .all()
          
 
     resultdb = []
-    for row in inventariosdb:
-        if row[2] - row[3]:        
+    for row in inventariosdb:   
+        if row[2] - row[5]:     
             resultdb.append({
                 "id": row[0],
                 "nombre": row[1],
                 "cantidad": row[2],
-                "distribuido": row[3],
+                "fecha": row[3],
                 "costo": row[4],
-                "fecha": row[5],
+                "distribuido": row[5],
+                "negocio_id": row[6],
         })
 
     session.close()

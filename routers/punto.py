@@ -66,7 +66,7 @@ async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
     # verificar si usuario autenticado es propietario del negocio
     if puntodb:
         prop_negocio = session.query(models.Negocio)\
-            .where(models.Negocio.id == producto.negocio_id,
+            .where(models.Negocio.id == puntodb.negocio_id,
              models.Negocio.propietario_id == current_user.id)\
             .count()
 
@@ -101,7 +101,8 @@ async def update_punto(id: int, punto: schemas.punto.PuntoCreate, token: Annotat
     # verificar si usuario autenticado es propietario del negocio
     if puntodb:
         prop_negocio = session.query(models.Negocio)\
-            .where(models.Negocio.id == puntodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .where(models.Negocio.id == puntodb.negocio_id,
+                  models.Negocio.propietario_id == current_user.id)\
             .count()
 
         if not prop_negocio:
@@ -137,7 +138,8 @@ async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     # verificar si usuario autenticado es propietario del negocio
     if puntodb:
         prop_negocio = session.query(models.Negocio)\
-            .where(models.Negocio.id == puntodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .where(models.Negocio.id == puntodb.negocio_id,
+                 models.Negocio.propietario_id == current_user.id)\
             .count()
 
         if not prop_negocio:
@@ -186,3 +188,38 @@ async def read_puntos_propietario(token: Annotated[str, Depends(auth.oauth2_sche
 
     session.close()
     return resultdb
+
+
+@router.get("/puntos-negocio/{id}", response_model=List[schemas.punto.Punto], tags=["puntos"])
+async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the punto item with the given id
+    puntosdb = session.query(models.Punto).where(models.Punto.negocio_id == id).all()
+
+    # verificar si usuario autenticado es propietario del negocio
+    if puntosdb:
+        prop_negocio = session.query(models.Negocio)\
+            .where(models.Negocio.id == id,
+             models.Negocio.propietario_id == current_user.id)\
+            .count()
+
+        if not prop_negocio:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
+
+    # close the session
+    session.close()
+
+    if not puntosdb:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"No se han encontrado Puntos del negocio {id}")
+
+    return puntosdb
