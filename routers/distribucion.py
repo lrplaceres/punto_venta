@@ -43,7 +43,7 @@ async def create_distribucion(distribucion: schemas.distribucion.DistribucionCre
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
-    # create an instance of the ToDo database model
+    # create an instance of the distribucion database model
     distribuciondb = models.Distribucion(inventario_id=distribucion.inventario_id,
                                          cantidad=distribucion.cantidad, fecha=distribucion.fecha,
                                          punto_id=distribucion.punto_id)
@@ -56,7 +56,7 @@ async def create_distribucion(distribucion: schemas.distribucion.DistribucionCre
     # close the session
     session.close()
 
-    # return the todo object
+    # return the distribucion object
     return distribuciondb
 
 
@@ -75,11 +75,16 @@ async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_s
     distribuciondb: schemas.distribucion.Distribucion = session.query(
         models.Distribucion.id, models.Distribucion.cantidad, models.Distribucion.fecha,
         models.Distribucion.inventario_id, models.Distribucion.punto_id,
-        models.Inventario.negocio_id)\
+        models.Inventario.negocio_id, models.Inventario.cantidad)\
         .join(models.Inventario)\
         .where(models.Distribucion.id == id)\
         .first()
-    print(distribuciondb)
+
+    cantidad_distribuida = session.query(db.func.sum(models.Distribucion.cantidad).label("cantidad_distribuida"))\
+        .where(models.Distribucion.inventario_id == distribuciondb[3])\
+        .group_by(models.Distribucion.inventario_id)\
+        .first()
+ 
     resultdb: dict = {
         "id": distribuciondb[0],
         "cantidad": distribuciondb[1],
@@ -87,6 +92,8 @@ async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_s
         "inventario_id": distribuciondb[3],
         "punto_id": distribuciondb[4],
         "negocio_id": distribuciondb[5],
+        "cantidad_inventario": distribuciondb[6],
+        "cantidad_distribuida": cantidad_distribuida.cantidad_distribuida,
     }
 
     # verificar si usuario autenticado es propietario del negocio
@@ -154,7 +161,7 @@ async def update_distribucion(id: int, distribucion: schemas.distribucion.Distri
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail=f"No está autorizado a realizar esta acción")
 
-    # update todo item with the given task (if an item with the given id was found)
+    # update distribucion item with the given task (if an item with the given id was found)
     if distribuciondb:
         distribuciondb.inventario_id = distribucion.inventario_id
         distribuciondb.cantidad = distribucion.cantidad
@@ -177,7 +184,7 @@ async def delete_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the todo item with the given id
+    # get the distribucion item with the given id
     distribuciondb: schemas.inventario.Inventario = session.query(
         models.Distribucion).get(id)
 
@@ -201,7 +208,7 @@ async def delete_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail=f"No está autorizado a realizar esta acción")
 
-    # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
+    # if distribucion item with given id exists, delete it from the database. Otherwise raise 404 error
     if distribuciondb:
         session.delete(distribuciondb)
         session.commit()

@@ -1,19 +1,21 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 
 # Create Venta Schema (Pydantic Model)
 class VentaCreate(BaseModel):
-    mercancia_id: int
+    distribucion_id: int
     cantidad: float
     precio: float
-    fecha: date
-    kiosko_id: int
+    fecha: datetime
+    punto_id: int
+    usuario_id: int
     
 # Complete Venta Schema (Pydantic Model)
 class Venta(BaseModel):
     id: int
-    mercancia_id: int
+    distribucion_id: int
     cantidad: float
     precio: float
-    fecha: date
-    kiosko_id: int
+    fecha: datetime
+    punto_id: int
+    usuario_id: int

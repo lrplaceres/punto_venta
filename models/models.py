@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, Boolean, Date, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, Boolean, Date, UniqueConstraint, DateTime
+from sqlalchemy.sql import func
 from database.database import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Mapped
@@ -13,6 +14,9 @@ class Negocio(Base):
     fecha_licencia: Mapped[datetime] = Column(Date)
     activo: Mapped[bool] = Column(Boolean, default=True)
     propietario_id: Mapped[int]= Column(Integer, ForeignKey("user.id"))
+    fecha_creado: Mapped[datetime] = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     propietarios: Mapped[int] = relationship("User", back_populates = "negocios")
     puntos: Mapped[int] = relationship("Punto", back_populates = "negocios", cascade="all, delete-orphan")
@@ -25,9 +29,13 @@ class Punto(Base):
     nombre: Mapped[str] = Column(String(256))
     direccion: Mapped[str] = Column(String(256))
     negocio_id:Mapped[int] = Column(Integer, ForeignKey("negocio.id"))
+    fecha_creado: Mapped[datetime] = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     negocios: Mapped[int] = relationship("Negocio", back_populates = "puntos")
     distribuciones: Mapped[int] = relationship("Distribucion", back_populates = "puntos", cascade="all, delete-orphan")
+    ventas: Mapped[int] = relationship("Venta", back_populates = "puntos", cascade="all, delete-orphan")
 
 
 class Producto(Base):
@@ -35,6 +43,9 @@ class Producto(Base):
     id: Mapped[int] = Column(Integer, primary_key=True)
     nombre: Mapped[str] = Column(String(256))
     negocio_id: Mapped[int] = Column(Integer, ForeignKey("negocio.id"))
+    fecha_creado: Mapped[datetime] = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     negocios: Mapped[int] = relationship("Negocio", back_populates = "productos")
     inventarios: Mapped[int] = relationship("Inventario", back_populates = "productos", cascade="all, delete-orphan")
@@ -50,6 +61,9 @@ class Inventario(Base):
     precio_venta: Mapped[float] = Column(Float(2))
     fecha: Mapped[datetime] = Column(Date)
     negocio_id: Mapped[int] = Column(Integer, ForeignKey("negocio.id"))
+    fecha_creado: Mapped[datetime] = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     productos: Mapped[int] = relationship("Producto", back_populates = "inventarios")
     negocios: Mapped[int] = relationship("Negocio", back_populates = "inventarios")
@@ -63,9 +77,31 @@ class Distribucion(Base):
     cantidad: Mapped[float] = Column(Float(2))
     fecha: Mapped[datetime] = Column(Date)
     punto_id: Mapped[str] = Column(Integer, ForeignKey("punto.id"))
+    fecha_creado: Mapped[datetime] = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     inventarios: Mapped[int] = relationship("Inventario", back_populates = "distribuciones")
     puntos: Mapped[int] = relationship("Punto", back_populates = "distribuciones")
+    ventas: Mapped[int] = relationship("Venta", back_populates = "distribuciones", cascade="all, delete-orphan")
+
+
+class Venta(Base):
+    __tablename__ = 'venta'
+    id: Mapped[int] = Column(Integer, primary_key=True)
+    distribucion_id: Mapped[str] = Column(Integer, ForeignKey("distribucion.id"))
+    cantidad: Mapped[float] = Column(Float(2))
+    precio: Mapped[float] = Column(Float(2))
+    fecha: Mapped[datetime] = Column(DateTime)
+    punto_id: Mapped[str] = Column(Integer, ForeignKey("punto.id"))
+    usuario_id: Mapped[str] = Column(Integer, ForeignKey("user.id"))
+    fecha_creado: Mapped[datetime] = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    distribuciones: Mapped[int] = relationship("Distribucion", back_populates = "ventas")
+    puntos: Mapped[int] = relationship("Punto", back_populates = "ventas")
+    usuarios: Mapped[int] = relationship("User", back_populates = "ventas")
 
 
 class User(Base):
@@ -77,5 +113,9 @@ class User(Base):
     rol: Mapped[str] = Column(String(256))
     activo: Mapped[bool] = Column(Boolean)
     password: Mapped[str] = Column(String(256))
+    fecha_creado: Mapped[datetime] = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     negocios: Mapped[int|None] = relationship("Negocio", back_populates = "propietarios")
+    ventas: Mapped[int|None] = relationship("Venta", back_populates = "usuarios")

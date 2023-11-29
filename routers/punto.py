@@ -109,7 +109,7 @@ async def update_punto(id: int, punto: schemas.punto.PuntoCreate, token: Annotat
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail=f"No está autorizado a realizar esta acción")
 
-    # update todo item with the given task (if an item with the given id was found)
+    # update punto item with the given task (if an item with the given id was found)
     if puntodb:
         puntodb.nombre = punto.nombre
         puntodb.direccion = punto.direccion
@@ -132,7 +132,7 @@ async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the todo item with the given id
+    # get the punto item with the given id
     puntodb: schemas.punto.Punto = session.query(models.Punto).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
@@ -146,7 +146,7 @@ async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail=f"No está autorizado a realizar esta acción")
 
-    # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
+    # if punto item with given id exists, delete it from the database. Otherwise raise 404 error
     if puntodb:
         session.delete(puntodb)
         session.commit()

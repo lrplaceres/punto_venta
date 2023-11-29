@@ -30,9 +30,9 @@ async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends
 
     if usuario_buscado:
         raise HTTPException(
-            status_code=status.HTTP_412_PRECONDITION_FAILED, detail=f"Usuario no disponible")
+            status_code=status.HTTP_412_PRECONDITION_FAILED, detail=f"Usuario no disponible. Intente con otro.")
 
-    # create an instance of the ToDo database model
+    # create an instance of the user database model
     userdb = models.User(usuario=user.usuario, nombre=user.nombre, email=user.email,
                          rol=user.rol, activo=user.activo, password=auth.pwd_context.hash(user.password))
 
@@ -44,7 +44,7 @@ async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends
     # close the session
     session.close()
 
-    # return the todo object
+    # return the user object
     return userdb
 
 
@@ -79,7 +79,7 @@ async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the kiosko item with the given id
+    # listado de propietarios
     usersdb = session.query(models.User).where(
         models.User.rol == "propietario", models.User.activo == "1")
 
@@ -108,7 +108,7 @@ async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)],
 
     if not userdb:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"user item with id {id} not found")
+                            detail=f"El usuario {id} no ha sido encontrado")
 
     return userdb
 
@@ -127,7 +127,7 @@ async def update_user(id: int, user: schemas.user.UserEdit, token: Annotated[str
     # get the producto item with the given id
     userdb: schemas.user.UserInDB = session.query(models.User).get(id)
 
-    # update todo item with the given task (if an item with the given id was found)
+    # update user item with the given task (if an item with the given id was found)
     if userdb:
         userdb.nombre = user.nombre
         userdb.email = user.email
@@ -150,16 +150,16 @@ async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the todo item with the given id
+    # get the user item with the given id
     userdb = session.query(models.User).get(id)
 
-    # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
+    # if user item with given id exists, delete it from the database. Otherwise raise 404 error
     if userdb:
         session.delete(userdb)
         session.commit()
         session.close()
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"inventario item with id {id} not found")
+                            detail=f"El usuario {id} no ha sido encontrado")
 
     return None

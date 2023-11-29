@@ -55,7 +55,7 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate, tok
     # close the session
     session.close()
 
-    # return the todo object
+    # return the inventario object
     return inventariodb
 
 
@@ -120,7 +120,7 @@ async def update_inventario(id: int, inventario: schemas.inventario.Inventario, 
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail=f"No está autorizado a realizar esta acción")
 
-    # update todo item with the given task (if an item with the given id was found)
+    # update inventario item with the given task (if an item with the given id was found)
     if inventariodb:
         inventariodb.producto_id = inventario.producto_id
         inventariodb.cantidad = inventario.cantidad
@@ -146,7 +146,7 @@ async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_s
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the todo item with the given id
+    # get the inventario item with the given id
     inventariodb: schemas.inventario.Inventario = session.query(
         models.Inventario).get(id)
 
@@ -160,7 +160,7 @@ async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_s
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail=f"No está autorizado a realizar esta acción")
 
-    # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
+    # if inventario item with given id exists, delete it from the database. Otherwise raise 404 error
     if inventariodb:
         session.delete(inventariodb)
         session.commit()

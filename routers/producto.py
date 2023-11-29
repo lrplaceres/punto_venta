@@ -39,7 +39,7 @@ async def create_producto(producto: schemas.producto.ProductoCreate, token: Anno
         raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
                             detail=f"El producto {producto.nombre} ya existe")
 
-    # create an instance of the ToDo database model
+    # create an instance of the producto database model
     productodb = models.Producto(
         nombre=producto.nombre, negocio_id=producto.negocio_id)
 
@@ -51,7 +51,7 @@ async def create_producto(producto: schemas.producto.ProductoCreate, token: Anno
     # close the session
     session.close()
 
-    # return the todo object
+    # return the producto object
     return productodb
 
 
@@ -115,7 +115,7 @@ async def update_producto(id: int, producto: schemas.producto.Producto, token: A
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail=f"No está autorizado a realizar esta acción")
 
-    # update todo item with the given task (if an item with the given id was found)
+    # update producto item with the given task (if an item with the given id was found)
     if productodb:
         productodb.nombre = producto.nombre
         productodb.negocio_id = producto.negocio_id
@@ -136,7 +136,7 @@ async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_sch
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the todo item with the given id
+    # get the producto item with the given id
     productodb = session.query(models.Producto).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
@@ -149,7 +149,7 @@ async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_sch
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail=f"No está autorizado a realizar esta acción")
 
-    # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
+    # if producto item with given id exists, delete it from the database. Otherwise raise 404 error
     if productodb:
         session.delete(productodb)
         session.commit()

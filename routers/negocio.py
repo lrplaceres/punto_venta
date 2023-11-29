@@ -23,7 +23,7 @@ async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotate
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # create an instance of the ToDo database model
+    # create an instance of the negocio database model
     negociodb = models.Negocio(nombre=negocio.nombre, direccion=negocio.direccion,
                                informacion=negocio.informacion,
                                fecha_licencia=negocio.fecha_licencia,
@@ -38,7 +38,7 @@ async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotate
     # close the session
     session.close()
 
-    # return the todo object
+    # return the negocio object
     return negociodb
 
 
@@ -100,7 +100,7 @@ async def update_negocio(id: int, negocio: schemas.negocio.NegocioCreate, token:
     # get the provincia item with the given id
     negociodb: schemas.negocio.Negocio = session.query(models.Negocio).get(id)
 
-    # update todo item with the given task (if an item with the given id was found)
+    # update negocio item with the given task (if an item with the given id was found)
     if negociodb:
         negociodb.nombre = negocio.nombre
         negociodb.direccion = negocio.direccion
@@ -126,10 +126,10 @@ async def delete_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_sche
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the todo item with the given id
+    # get the negocio item with the given id
     negociodb = session.query(models.Negocio).get(id)
 
-    # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
+    # if negocio item with given id exists, delete it from the database. Otherwise raise 404 error
     if negociodb:
         session.delete(negociodb)
         session.commit()

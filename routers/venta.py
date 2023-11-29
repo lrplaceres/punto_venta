@@ -17,32 +17,26 @@ router = APIRouter()
 async def create_venta(venta: schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
-    if current_user.rol == "propietario":
+    if current_user.rol != "propietario" and current_user.rol != "dependiente":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    existe_kiosko = session.query(models.Kiosko).get(venta.kiosko_id)
-    existe_mercancia = session.query(models.Mercancia).get(venta.mercancia_id)
-    if not existe_kiosko or not existe_mercancia:
-        raise HTTPException(
-            status_code=status.HTTP_412_PRECONDITION_FAILED, detail=f"Inventario no autorizado")
-
-    # create an instance of the ToDo database model
-    ventadb = models.Venta(mercancia_id=venta.mercancia_id, cantidad=venta.cantidad,
-                           precio=venta.precio, fecha=venta.fecha, kiosko_id=venta.kiosko_id)
+    # create an instance of the venta database model
+    ventadb = models.Venta(distribucion_id=venta.distribucion_id, cantidad=venta.cantidad,
+                           precio=venta.precio, fecha=venta.fecha, punto_id=venta.punto_id, usuario_id=current_user.id)
 
     # add it to the session and commit it
     session.add(ventadb)
-    session.commit()
+    session.commit() 
     session.refresh(ventadb)
 
     # close the session
     session.close()
 
-    # return the todo object
+    # return the venta object
     return ventadb
 
 
@@ -50,14 +44,14 @@ async def create_venta(venta: schemas.venta.VentaCreate, token: Annotated[str, D
 async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
-    if current_user.rol == "propietario":
+    if current_user.rol == "propietario" or current_user.rol == "dependiente":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the kiosko item with the given id
+    # get the venta item with the given id
     ventadb = session.query(models.Venta).get(id)
 
     # close the session
@@ -71,30 +65,27 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
 
 
 @router.put("/venta/{id}", tags=["venta"])
-async def update_venta(id: int, mercancia_id: int, cantidad: float, precio: float, fecha: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_venta(id: int, venta:schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
-    if current_user.rol == "propietario":
+    if current_user.rol == "propietario" or current_user.rol == "dependiente":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    existe_mercancia = session.query(models.Mercancia).get(mercancia_id)
-    if not existe_mercancia:
-        raise HTTPException(
-            status_code=status.HTTP_412_PRECONDITION_FAILED, detail=f"Inventario no autorizado")
-
-    # get the producto item with the given id
+    # get the venta item with the given id
     ventadb: schemas.venta.Venta = session.query(models.Venta).get(id)
 
     # update todo item with the given task (if an item with the given id was found)
     if ventadb:
-        ventadb.mercancia_id = mercancia_id
-        ventadb.cantidad = cantidad
-        ventadb.precio = precio
-        ventadb.fecha = fecha
+        ventadb.distribucion_id = venta.distribucion_id
+        ventadb.cantidad = venta.cantidad
+        ventadb.precio = venta.precio
+        ventadb.fecha = venta.fecha
+        ventadb.punto_id = venta.punto_id
+        ventadb.usuario_id = venta.usuario_id
         session.commit()
 
     # close the session
@@ -105,14 +96,14 @@ async def update_venta(id: int, mercancia_id: int, cantidad: float, precio: floa
 async def delete_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
-    if current_user.rol == "propietario":
+    if current_user.rol == "propietario" or current_user.rol == "dependiente":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the todo item with the given id
+    # get the venta item with the given id
     ventadb = session.query(models.Venta).get(id)
 
     # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
