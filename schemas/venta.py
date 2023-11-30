@@ -8,7 +8,6 @@ class VentaCreate(BaseModel):
     precio: float
     fecha: datetime
     punto_id: int
-    usuario_id: int
     
 # Complete Venta Schema (Pydantic Model)
 class Venta(BaseModel):

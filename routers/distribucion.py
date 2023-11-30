@@ -259,3 +259,51 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
 
     session.close()
     return resultdb
+
+
+@router.get("/distribuciones-venta/", tags=["distribuciones"])
+async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the distribuciones item with the given id
+    distribucionesdb = session.query(models.Distribucion.id, models.Distribucion.cantidad,
+                                     models.Distribucion.fecha, models.Punto.id,
+                                     models.Producto.nombre, models.Inventario.precio_venta,
+                                     db.func.coalesce(db.func.sum(models.Venta.cantidad),0),
+                                     models.Punto.nombre, models.Inventario.um, models.Distribucion.fecha)\
+        .select_from(models.Distribucion)\
+        .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.User, models.User.id == models.Negocio.propietario_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .outerjoin(models.Venta, models.Venta.distribucion_id == models.Distribucion.id)\
+        .where(models.User.usuario == current_user.usuario)\
+        .group_by(models.Distribucion.inventario_id, models.Distribucion.punto_id, models.Venta.distribucion_id)\
+        .all()
+
+    resultdb = []
+    for row in distribucionesdb:
+        if row[1] - row[6]:
+            resultdb.append({
+                "id": row[0],
+                "cantidad": row[1],
+                "fecha": row[2],
+                "punto_id": row[3],
+                "nombre_producto": row[4],
+                "precio_venta": row[5],
+                "cantidad_vendida": row[6],
+                "nombre_punto": row[7],
+                "um": row[8],
+                "fecha": row[9],
+            })
+
+    session.close()
+    return resultdb
