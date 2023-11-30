@@ -40,11 +40,11 @@ async def create_venta(venta: schemas.venta.VentaCreate, token: Annotated[str, D
     return ventadb
 
 
-@router.get("/venta/{id}", tags=["venta"])
+@router.get("/venta/{id}",response_model=schemas.venta.VentaCreate, tags=["venta"])
 async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
-    if current_user.rol == "propietario" or current_user.rol == "dependiente":
+    if current_user.rol != "propietario" and current_user.rol != "dependiente":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
@@ -68,7 +68,7 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
 async def update_venta(id: int, venta:schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
-    if current_user.rol == "propietario" or current_user.rol == "dependiente":
+    if current_user.rol != "propietario" and current_user.rol != "dependiente":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
@@ -80,12 +80,9 @@ async def update_venta(id: int, venta:schemas.venta.VentaCreate, token: Annotate
 
     # update todo item with the given task (if an item with the given id was found)
     if ventadb:
-        ventadb.distribucion_id = venta.distribucion_id
         ventadb.cantidad = venta.cantidad
         ventadb.precio = venta.precio
         ventadb.fecha = venta.fecha
-        ventadb.punto_id = venta.punto_id
-        ventadb.usuario_id = venta.usuario_id
         session.commit()
 
     # close the session
@@ -96,7 +93,7 @@ async def update_venta(id: int, venta:schemas.venta.VentaCreate, token: Annotate
 async def delete_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
-    if current_user.rol == "propietario" or current_user.rol == "dependiente":
+    if current_user.rol != "propietario" and current_user.rol != "dependiente":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
