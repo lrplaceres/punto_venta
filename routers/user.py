@@ -6,6 +6,7 @@ import schemas.user
 import models.models as models
 from datetime import date
 import auth.auth as auth
+import log.log as log
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -40,6 +41,13 @@ async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends
     session.add(userdb)
     session.commit()
     session.refresh(userdb)
+
+    log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "CREATE",
+        "tabla": "User",
+        "descripcion": f"Ha creado el id {userdb.id}"
+    })
 
     # close the session
     session.close()
@@ -135,6 +143,13 @@ async def update_user(id: int, user: schemas.user.UserEdit, token: Annotated[str
         userdb.activo = user.activo
         session.commit()
 
+        log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "UPDATE",
+        "tabla": "User",
+        "descripcion": f"Ha editado el id {userdb.id}"
+    })
+
     # close the session
     session.close()
 
@@ -158,6 +173,13 @@ async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
         session.delete(userdb)
         session.commit()
         session.close()
+
+        log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "DELETE",
+        "tabla": "User",
+        "descripcion": f"Ha eliminado el id {userdb.id}"
+    })
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"El usuario {id} no ha sido encontrado")

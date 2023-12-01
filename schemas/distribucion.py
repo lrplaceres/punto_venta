@@ -18,3 +18,14 @@ class Distribucion(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class DistribucionGet(BaseModel):
+    id: int
+    cantidad: float
+    fecha: datetime   
+    inventario_id: int
+    punto_id: int
+    negocio_id: int
+    cantidad_inventario: float
+    cantidad_distribuida: float

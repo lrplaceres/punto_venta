@@ -5,6 +5,7 @@ from database.database import Base, engine
 import schemas.negocio
 import models.models as models
 import auth.auth as auth
+import log.log as log
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -15,7 +16,7 @@ router = APIRouter()
 @router.post("/negocio", response_model=schemas.negocio.Negocio, status_code=status.HTTP_201_CREATED, tags=["negocio"])
 async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-    #validando rol de usuario autenticado
+    # validando rol de usuario autenticado
     if current_user.rol != "superadmin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -35,6 +36,13 @@ async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotate
     session.commit()
     session.refresh(negociodb)
 
+    log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "CREATE",
+        "tabla": "Negocio",
+        "descripcion": f"Ha creado el id {negociodb.id}"
+    })
+
     # close the session
     session.close()
 
@@ -45,7 +53,7 @@ async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotate
 @router.get("/negocio", response_model=List[schemas.negocio.Negocio], tags=["negocio"])
 async def read_negocio_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-    #validando rol de usuario autenticado
+    # validando rol de usuario autenticado
     if current_user.rol != "superadmin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -65,7 +73,7 @@ async def read_negocio_list(token: Annotated[str, Depends(auth.oauth2_scheme)], 
 @router.get("/negocio/{id}", response_model=schemas.negocio.Negocio, tags=["negocio"])
 async def read_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-    #validando rol de usuario autenticado
+    # validando rol de usuario autenticado
     if current_user.rol != "superadmin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -89,11 +97,11 @@ async def read_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
 @router.put("/negocio/{id}", tags=["negocio"])
 async def update_negocio(id: int, negocio: schemas.negocio.NegocioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-    #validando rol de usuario autenticado
+    # validando rol de usuario autenticado
     if current_user.rol != "superadmin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
-   
+
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
@@ -111,6 +119,13 @@ async def update_negocio(id: int, negocio: schemas.negocio.NegocioCreate, token:
 
         session.commit()
 
+        log.create_log({
+            "usuario": current_user.usuario,
+            "accion": "UPDATE",
+            "tabla": "Negocio",
+            "descripcion": f"Ha editado el id {negociodb.id}"
+        })
+
     # close the session
     session.close()
 
@@ -118,7 +133,7 @@ async def update_negocio(id: int, negocio: schemas.negocio.NegocioCreate, token:
 @router.delete("/negocio/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["negocio"])
 async def delete_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-    #validando rol de usuario autenticado
+    # validando rol de usuario autenticado
     if current_user.rol != "superadmin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -134,9 +149,16 @@ async def delete_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_sche
         session.delete(negociodb)
         session.commit()
         session.close()
+
+        log.create_log({
+            "usuario": current_user.usuario,
+            "accion": "DELETE",
+            "tabla": "Negocio",
+            "descripcion": f"Ha eliminado el id {negociodb.id}"
+        })
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Kiosko con id {id} no encontrado")
+                            detail=f"Negocio id {id} no encontrado")
 
     return None
 
@@ -144,7 +166,7 @@ async def delete_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_sche
 @router.get("/negocios/", response_model=List[schemas.negocio.Negocio], tags=["negocios"])
 async def read_negocios_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
-    #validando rol de usuario autenticado
+    # validando rol de usuario autenticado
     if current_user.rol != "propietario":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -154,7 +176,6 @@ async def read_negocios_propietario(token: Annotated[str, Depends(auth.oauth2_sc
 
     negociosdb = session.query(models.Negocio).join(
         models.User).where(models.User.usuario == current_user.usuario).all()
-  
 
     # close the session
     session.close()

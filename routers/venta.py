@@ -6,6 +6,7 @@ import schemas.venta
 import models.models as models
 from datetime import date
 import auth.auth as auth
+import log.log as log
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -30,8 +31,15 @@ async def create_venta(venta: schemas.venta.VentaCreate, token: Annotated[str, D
 
     # add it to the session and commit it
     session.add(ventadb)
-    session.commit() 
+    session.commit()
     session.refresh(ventadb)
+
+    log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "CREATE",
+        "tabla": "Venta",
+        "descripcion": f"Ha creado el id {ventadb.id}"
+    })
 
     # close the session
     session.close()
@@ -40,7 +48,7 @@ async def create_venta(venta: schemas.venta.VentaCreate, token: Annotated[str, D
     return ventadb
 
 
-@router.get("/venta/{id}",response_model=schemas.venta.VentaCreate, tags=["venta"])
+@router.get("/venta/{id}", response_model=schemas.venta.VentaCreate, tags=["venta"])
 async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -65,7 +73,7 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
 
 
 @router.put("/venta/{id}", tags=["venta"])
-async def update_venta(id: int, venta:schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_venta(id: int, venta: schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario" and current_user.rol != "dependiente":
@@ -84,6 +92,13 @@ async def update_venta(id: int, venta:schemas.venta.VentaCreate, token: Annotate
         ventadb.precio = venta.precio
         ventadb.fecha = venta.fecha
         session.commit()
+
+        log.create_log({
+            "usuario": current_user.usuario,
+            "accion": "UPDATE",
+            "tabla": "Venta",
+            "descripcion": f"Ha editado el id {ventadb.id}"
+        })
 
     # close the session
     session.close()
@@ -108,6 +123,13 @@ async def delete_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
         session.delete(ventadb)
         session.commit()
         session.close()
+
+        log.create_log({
+            "usuario": current_user.usuario,
+            "accion": "DELETE",
+            "tabla": "Venta",
+            "descripcion": f"Ha eliminado el id {ventadb.id}"
+        })
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Venta con id {id} no encontrado")
@@ -129,7 +151,7 @@ async def read_ventas_propietario(token: Annotated[str, Depends(auth.oauth2_sche
     # get the negocio item with the given id
     ventasdb = session.query(models.Venta.id, models.Producto.nombre,
                              models.Punto.nombre, models.Venta.cantidad,
-                             models.Venta.precio,models.Venta.fecha,
+                             models.Venta.precio, models.Venta.fecha,
                              models.User.nombre
                              )\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\

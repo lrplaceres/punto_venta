@@ -6,6 +6,8 @@ from database.database import Base, engine
 import schemas.distribucion
 import models.models as models
 import auth.auth as auth
+import log.log as log
+from datetime import date, datetime
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -53,6 +55,13 @@ async def create_distribucion(distribucion: schemas.distribucion.DistribucionCre
     session.commit()
     session.refresh(distribuciondb)
 
+    log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "CREATE",
+        "tabla": "Distribucion",
+        "descripcion": f"Ha creado el id {distribuciondb.id}"
+    })
+
     # close the session
     session.close()
 
@@ -60,7 +69,7 @@ async def create_distribucion(distribucion: schemas.distribucion.DistribucionCre
     return distribuciondb
 
 
-@router.get("/distribucion/{id}", tags=["distribucion"])
+@router.get("/distribucion/{id}",response_model=schemas.distribucion.DistribucionGet, tags=["distribucion"])
 async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -84,7 +93,7 @@ async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_s
         .where(models.Distribucion.inventario_id == distribuciondb[3])\
         .group_by(models.Distribucion.inventario_id)\
         .first()
- 
+
     resultdb: dict = {
         "id": distribuciondb[0],
         "cantidad": distribuciondb[1],
@@ -169,6 +178,13 @@ async def update_distribucion(id: int, distribucion: schemas.distribucion.Distri
         distribuciondb.punto_id = distribucion.punto_id
         session.commit()
 
+        log.create_log({
+            "usuario": current_user.usuario,
+            "accion": "UPDATE",
+            "tabla": "Distribucion",
+            "descripcion": f"Ha editado el id {distribuciondb.id}"
+        })
+
     # close the session
     session.close()
 
@@ -213,6 +229,13 @@ async def delete_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2
         session.delete(distribuciondb)
         session.commit()
         session.close()
+
+        log.create_log({
+            "usuario": current_user.usuario,
+            "accion": "DELETE",
+            "tabla": "Distribucion",
+            "descripcion": f"Ha eliminado el id {distribuciondb.id}"
+        })
     else:
         raise HTTPException(
             status_code=404, detail=f"Distribución con id {id} no encontrado")
@@ -276,7 +299,8 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
     distribucionesdb = session.query(models.Distribucion.id, models.Distribucion.cantidad,
                                      models.Distribucion.fecha, models.Punto.id,
                                      models.Producto.nombre, models.Inventario.precio_venta,
-                                     db.func.coalesce(db.func.sum(models.Venta.cantidad),0),
+                                     db.func.coalesce(db.func.sum(
+                                         models.Venta.cantidad), 0),
                                      models.Punto.nombre, models.Inventario.um, models.Distribucion.fecha)\
         .select_from(models.Distribucion)\
         .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\

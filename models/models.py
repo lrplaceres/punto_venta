@@ -119,3 +119,15 @@ class User(Base):
 
     negocios: Mapped[int|None] = relationship("Negocio", back_populates = "propietarios")
     ventas: Mapped[int|None] = relationship("Venta", back_populates = "usuarios")
+
+
+class Log(Base):
+    __tablename__ = 'log'
+    id: Mapped[int] = Column(Integer, primary_key=True)
+    usuario: Mapped[str] = Column(String(256))
+    accion: Mapped[str] = Column(String(256))
+    tabla: Mapped[str] = Column(String(256))
+    descripcion: Mapped[str] = Column(String(256))
+    fecha_creado: Mapped[datetime] = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )

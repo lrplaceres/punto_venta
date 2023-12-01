@@ -6,6 +6,7 @@ from database.database import Base, engine
 import schemas.punto
 import models.models as models
 import auth.auth as auth
+import log.log as log
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -42,6 +43,13 @@ async def create_punto(punto: schemas.punto.PuntoCreate, token: Annotated[str, D
     session.commit()
     session.refresh(puntodb)
 
+    log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "CREATE",
+        "tabla": "Punto",
+        "descripcion": f"Ha creado el id {puntodb.id}"
+    })
+
     # close the session
     session.close()
 
@@ -67,7 +75,7 @@ async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
     if puntodb:
         prop_negocio = session.query(models.Negocio)\
             .where(models.Negocio.id == puntodb.negocio_id,
-             models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id)\
             .count()
 
         if not prop_negocio:
@@ -102,7 +110,7 @@ async def update_punto(id: int, punto: schemas.punto.PuntoCreate, token: Annotat
     if puntodb:
         prop_negocio = session.query(models.Negocio)\
             .where(models.Negocio.id == puntodb.negocio_id,
-                  models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id)\
             .count()
 
         if not prop_negocio:
@@ -116,6 +124,13 @@ async def update_punto(id: int, punto: schemas.punto.PuntoCreate, token: Annotat
         puntodb.negocio_id = punto.negocio_id
 
         session.commit()
+
+        log.create_log({
+            "usuario": current_user.usuario,
+            "accion": "UPDATE",
+            "tabla": "Punto",
+            "descripcion": f"Ha editado el id {puntodb.id}"
+        })
 
     # close the session
     session.close()
@@ -139,7 +154,7 @@ async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     if puntodb:
         prop_negocio = session.query(models.Negocio)\
             .where(models.Negocio.id == puntodb.negocio_id,
-                 models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id)\
             .count()
 
         if not prop_negocio:
@@ -151,6 +166,13 @@ async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
         session.delete(puntodb)
         session.commit()
         session.close()
+
+        log.create_log({
+            "usuario": current_user.usuario,
+            "accion": "DELETE",
+            "tabla": "Punto",
+            "descripcion": f"Ha eliminado el id {puntodb.id}"
+        })
     else:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Punto con id {id} no encontrado")
@@ -202,13 +224,14 @@ async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the punto item with the given id
-    puntosdb = session.query(models.Punto).where(models.Punto.negocio_id == id).all()
+    puntosdb = session.query(models.Punto).where(
+        models.Punto.negocio_id == id).all()
 
     # verificar si usuario autenticado es propietario del negocio
     if puntosdb:
         prop_negocio = session.query(models.Negocio)\
             .where(models.Negocio.id == id,
-             models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id)\
             .count()
 
         if not prop_negocio:
