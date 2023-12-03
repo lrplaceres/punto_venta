@@ -196,7 +196,7 @@ async def read_puntos_propietario(token: Annotated[str, Depends(auth.oauth2_sche
         .join(models.Negocio)\
         .join(models.User)\
         .where(models.User.usuario == current_user.usuario)\
-        .order_by(models.Punto.nombre)\
+        .order_by(models.Punto.id)\
         .all()
 
     resultdb = []

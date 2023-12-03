@@ -15,6 +15,7 @@ class Venta(BaseModel):
     distribucion_id: int
     cantidad: float
     precio: float
+    monto: float
     fecha: datetime
     punto_id: int
     usuario_id: int

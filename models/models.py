@@ -92,6 +92,7 @@ class Venta(Base):
     distribucion_id: Mapped[str] = Column(Integer, ForeignKey("distribucion.id"))
     cantidad: Mapped[float] = Column(Float(2))
     precio: Mapped[float] = Column(Float(2))
+    monto: Mapped[float] = Column(Float(2))
     fecha: Mapped[datetime] = Column(DateTime)
     punto_id: Mapped[str] = Column(Integer, ForeignKey("punto.id"))
     usuario_id: Mapped[str] = Column(Integer, ForeignKey("user.id"))
