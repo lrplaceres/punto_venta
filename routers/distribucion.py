@@ -243,7 +243,7 @@ async def delete_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2
     return None
 
 
-@router.get("/distribuciones/", tags=["distribuciones"])
+@router.get("/distribuciones/", tags=["distribuciones"], description="Listado de distribuciones")
 async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -284,7 +284,7 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
     return resultdb
 
 
-@router.get("/distribuciones-venta/", tags=["distribuciones"])
+@router.get("/distribuciones-venta/", tags=["distribuciones"], description="Distribuciones disponibles para la venta, restando cantidad vendida")
 async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -299,8 +299,7 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
     distribucionesdb = session.query(models.Distribucion.id, models.Distribucion.cantidad,
                                      models.Distribucion.fecha, models.Punto.id,
                                      models.Producto.nombre, models.Inventario.precio_venta,
-                                     db.func.coalesce(db.func.sum(
-                                         models.Venta.cantidad), 0),
+                                     db.func.coalesce(db.func.sum(models.Venta.cantidad), 0),
                                      models.Punto.nombre, models.Inventario.um, models.Distribucion.fecha)\
         .select_from(models.Distribucion)\
         .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
@@ -311,6 +310,7 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
         .outerjoin(models.Venta, models.Venta.distribucion_id == models.Distribucion.id)\
         .where(models.User.usuario == current_user.usuario)\
         .group_by(models.Distribucion.inventario_id, models.Distribucion.punto_id, models.Venta.distribucion_id)\
+        .order_by(models.Inventario.negocio_id, models.Distribucion.punto_id, models.Producto.nombre)\
         .all()
 
     resultdb = []
@@ -327,7 +327,53 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
                 "nombre_punto": row[7],
                 "um": row[8],
                 "fecha": row[9],
+                "existencia": row[1] - row[6]
             })
+
+    session.close()
+    return resultdb
+
+
+@router.get("/distribuciones-periodo/{fecha_inicio}/{fecha_fin}", tags=["distribuciones"], description="Listado de distribuciones por fecha, agrupadas por inventario")
+async def read_distribuciones_propietario(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # validando rol de usuario autenticado
+    if fecha_inicio > fecha_fin:
+        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
+                            detail=f"La fecha fin debe ser mayor que la fecha inicio")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the distribuciones item with the given id
+    distribucionesdb = session.query(models.Distribucion.id, db.func.sum(models.Distribucion.cantidad),
+                                     models.Punto.nombre, models.Negocio.nombre, 
+                                     models.Producto.nombre)\
+        .select_from(models.Distribucion)\
+        .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.User, models.User.id == models.Negocio.propietario_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .where(models.User.usuario == current_user.usuario,
+                db.func.date(models.Distribucion.fecha) >= fecha_inicio, db.func.date(models.Distribucion.fecha) <= fecha_fin)\
+        .group_by(models.Distribucion.punto_id, models.Producto.nombre)\
+        .all()
+
+    resultdb = []
+    for row in distribucionesdb:
+        resultdb.append({
+            "id": row[0],
+            "cantidad": row[1],
+            "nombre_punto": row[2],
+            "nombre_negocio": row[3],
+            "nombre_producto": row[4],
+        })
 
     session.close()
     return resultdb

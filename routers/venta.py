@@ -2,6 +2,7 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
 import sqlalchemy as db
+from sqlalchemy import extract
 from database.database import Base, engine
 import schemas.venta
 import models.models as models
@@ -235,7 +236,7 @@ async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annota
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
-     # validando rol de usuario autenticado
+    # validando rol de usuario autenticado
     if fecha_inicio > fecha_fin:
         raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
                             detail=f"La fecha fin debe ser mayor que la fecha inicio")
@@ -267,6 +268,46 @@ async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annota
             "nombre_punto": row[1],
             "cantidad": row[2],
             "id": row[3]
+        })
+
+    session.close()
+    return resultdb
+
+
+@router.get("/ventas-brutas-periodo/{fecha_inicio}/{fecha_fin}", tags=["ventas"])
+async def read_ventas_brutas_periodo(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # validando rol de usuario autenticado
+    if fecha_inicio > fecha_fin:
+        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
+                            detail=f"La fecha fin debe ser mayor que la fecha inicio")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the negocio item with the given id
+    ventasdb = session.query(db.func.sum(models.Venta.monto),
+                            extract("year", models.Venta.fecha),extract("month", models.Venta.fecha),
+                            extract("day", models.Venta.fecha))\
+        .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
+        .join(models.User, models.User.id == models.Venta.usuario_id)\
+        .where(models.Negocio.propietario_id == current_user.id,
+               db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
+        .group_by(extract("year", models.Venta.fecha),extract("month", models.Venta.fecha),extract("day", models.Venta.fecha))\
+        .all()
+
+    resultdb = []
+    for row in ventasdb:
+        resultdb.append({
+            "monto": row[0],
+            "fecha": f"{row[1]}-{row[2]}-{row[3]}",
         })
 
     session.close()
@@ -309,16 +350,16 @@ async def read_utilidades_periodo(fecha_inicio: date, fecha_fin: date, token: An
     resultdb = []
     for row in ventasdb:
         resultdb.append({
-            "id": row[3],
             "nombre_producto": row[0],
-            "utilidad": row[5] - (row[4] * row[2]),
             "nombre_punto": row[1],
-            "diferencia_utilidad": (row[5] - (row[4] * row[2])) - ((row[6] * row[2]) - (row[4] * row[2])),
             "cantidad": row[2],
+            "id": row[3],
             "precio_costo": row[4] * row[2],
             "monto": row[5],
+            "utilidad": row[5] - (row[4] * row[2]),
             "precio_inventario": row[6],
             "utilidad_esperada": (row[6] * row[2]) - (row[4] * row[2]),
+            "diferencia_utilidad": (row[5] - (row[4] * row[2])) - ((row[6] * row[2]) - (row[4] * row[2])),
         })
 
     session.close()

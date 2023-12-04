@@ -194,7 +194,7 @@ async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_s
     return None
 
 
-@router.get("/inventarios/", tags=["inventarios"])
+@router.get("/inventarios/", tags=["inventarios"], description="Productos en inventario por propietario")
 async def read_inventarios_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -230,8 +230,7 @@ async def read_inventarios_propietario(token: Annotated[str, Depends(auth.oauth2
     return resultdb
 
 
-# inventarios que es posible distribuir
-@router.get("/inventarios-a-distribuir/", tags=["inventarios"])
+@router.get("/inventarios-a-distribuir/", tags=["inventarios"], description="Productos en Inventario no distribuidos")
 async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -245,14 +244,11 @@ async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oau
     # get the inventario item with the given id
     inventariosdb = session.query(models.Inventario.id,
                                   models.Producto.nombre,
-                                  db.func.sum(db.func.coalesce(
-                                      (models.Inventario.cantidad), 0)),
+                                  models.Inventario.cantidad,
                                   models.Inventario.fecha,
                                   models.Inventario.costo,
-                                  db.func.sum(db.func.coalesce(
-                                      (models.Distribucion.cantidad), 0)),
-                                  models.Inventario.negocio_id,
-                                  )\
+                                  db.func.sum(db.func.coalesce((models.Distribucion.cantidad), 0)),
+                                  models.Inventario.negocio_id, models.Negocio.nombre)\
         .select_from(models.Inventario)\
         .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
         .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
@@ -274,6 +270,8 @@ async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oau
                 "costo": row[4],
                 "distribuido": row[5],
                 "negocio_id": row[6],
+                "existencia": row[2] - row[5],
+                "nombre_negocio": row[7],
             })
 
     session.close()
