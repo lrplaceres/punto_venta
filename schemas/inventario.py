@@ -19,6 +19,7 @@ class Inventario(BaseModel):
     um: str
     costo: float
     precio_venta: float
+    monto: float
     fecha: datetime
     negocio_id: int
 

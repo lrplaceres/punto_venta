@@ -2,7 +2,6 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
 import sqlalchemy as db
-from sqlalchemy import extract
 from database.database import Base, engine
 import schemas.venta
 import models.models as models
@@ -303,7 +302,7 @@ async def read_ventas_brutas_periodo(fecha_inicio: date, fecha_fin: date, token:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
-    # validando rol de usuario autenticado
+    # validando rango de fecha
     if fecha_inicio > fecha_fin:
         raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
                             detail=f"La fecha fin debe ser mayor que la fecha inicio")
@@ -313,16 +312,15 @@ async def read_ventas_brutas_periodo(fecha_inicio: date, fecha_fin: date, token:
 
     # get the negocio item with the given id
     ventasdb = session.query(db.func.sum(models.Venta.monto),
-                             extract("year", models.Venta.fecha), extract(
-                                 "month", models.Venta.fecha),
-                             extract("day", models.Venta.fecha))\
+                             db.extract("year", models.Venta.fecha), db.extract("month", models.Venta.fecha),
+                             db.extract("day", models.Venta.fecha))\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
         .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
         .join(models.User, models.User.id == models.Venta.usuario_id)\
         .where(models.Negocio.propietario_id == current_user.id,
                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
-        .group_by(extract("year", models.Venta.fecha), extract("month", models.Venta.fecha), extract("day", models.Venta.fecha))\
+        .group_by(db.extract("year", models.Venta.fecha), db.extract("month", models.Venta.fecha), db.extract("day", models.Venta.fecha))\
         .all()
 
     resultdb = []
@@ -330,6 +328,7 @@ async def read_ventas_brutas_periodo(fecha_inicio: date, fecha_fin: date, token:
         resultdb.append({
             "monto": row[0],
             "fecha": f"{row[1]}-{row[2]}-{row[3]}",
+            "id": f"id{row[1]}-{row[2]}-{row[3]}",
         })
 
     session.close()

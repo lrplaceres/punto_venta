@@ -46,7 +46,7 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate, tok
     # create an instance of the Inventario database model
     inventariodb = models.Inventario(producto_id=inventario.producto_id, cantidad=inventario.cantidad,
                                      um=inventario.um, costo=inventario.costo, precio_venta=inventario.precio_venta,
-                                     fecha=inventario.fecha, negocio_id=inventario.negocio_id)
+                                     fecha=inventario.fecha, negocio_id=inventario.negocio_id, monto = inventario.costo * inventario.cantidad)
 
     # add it to the session and commit it
     session.add(inventariodb)
@@ -135,6 +135,7 @@ async def update_inventario(id: int, inventario: schemas.inventario.Inventario, 
         inventariodb.um = inventario.um
         inventariodb.costo = inventario.costo
         inventariodb.precio_venta = inventario.precio_venta
+        inventariodb.monto = inventario.costo * inventario.cantidad
         inventariodb.fecha = inventario.fecha
         inventariodb.negocio_id = inventario.negocio_id
         session.commit()
@@ -280,4 +281,44 @@ async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oau
         raise HTTPException(
             status_code=404, detail=f"Inventarios no encontrados")
 
+    return resultdb
+
+
+@router.get("/inventarios-costos-brutos/{fecha_inicio}/{fecha_fin}", tags=["inventarios"], description="Monto propietario")
+async def read_inventarios_propietario(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+                            
+    # validando rango de fecha
+    if fecha_inicio > fecha_fin:
+        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
+                            detail=f"La fecha fin debe ser mayor que la fecha inicio")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the negocio item with the given id
+    puntosdb = session.query(db.func.sum(models.Inventario.monto),
+                            db.extract("year", models.Inventario.fecha), db.extract("month", models.Inventario.fecha),
+                            db.extract("day", models.Inventario.fecha))\
+        .join(models.Negocio)\
+        .join(models.User)\
+        .join(models.Producto, models.Inventario.producto_id == models.Producto.id)\
+        .where(models.User.usuario == current_user.usuario,
+                db.func.date(models.Inventario.fecha) >= fecha_inicio, db.func.date(models.Inventario.fecha) <= fecha_fin)\
+        .group_by(db.extract("year", models.Inventario.fecha), db.extract("month", models.Inventario.fecha), db.extract("day", models.Inventario.fecha))\
+        .all()
+
+    resultdb = []
+    for row in puntosdb:
+        resultdb.append({
+            "monto": row[0],
+            "fecha": f"{row[1]}-{row[2]}-{row[3]}",
+            "id": f"id{row[1]}-{row[2]}-{row[3]}",
+        })
+
+    session.close()
     return resultdb

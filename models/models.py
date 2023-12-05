@@ -58,6 +58,7 @@ class Inventario(Base):
     cantidad: Mapped[float] = Column(Float(2))
     um: Mapped[str] = Column(String(256))
     costo: Mapped[float] = Column(Float(2))
+    monto: Mapped[float] = Column(Float(2))
     precio_venta: Mapped[float] = Column(Float(2))
     fecha: Mapped[datetime] = Column(Date)
     negocio_id: Mapped[int] = Column(Integer, ForeignKey("negocio.id"))
