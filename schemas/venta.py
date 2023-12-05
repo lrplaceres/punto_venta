@@ -19,3 +19,12 @@ class Venta(BaseModel):
     fecha: datetime
     punto_id: int
     usuario_id: int
+
+
+class VentaGet(BaseModel):
+    distribucion_id: int
+    cantidad: float
+    precio: float
+    fecha: datetime
+    punto_id: int
+    nombre_producto: str

@@ -6,9 +6,10 @@ from sqlalchemy import extract
 from database.database import Base, engine
 import schemas.venta
 import models.models as models
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import auth.auth as auth
 import log.log as log
+from pytz import UTC
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -27,10 +28,13 @@ async def create_venta(venta: schemas.venta.VentaCreate, token: Annotated[str, D
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
+    time_diff = timedelta(hours=5)
+    new_time = venta.fecha - time_diff
+
     # create an instance of the venta database model
     ventadb = models.Venta(distribucion_id=venta.distribucion_id, cantidad=venta.cantidad,
-                           precio=venta.precio, fecha=venta.fecha, punto_id=venta.punto_id,
-                            usuario_id=current_user.id, monto=venta.cantidad * venta.precio)
+                           precio=venta.precio, fecha=new_time, punto_id=venta.punto_id,
+                           usuario_id=current_user.id, monto=venta.cantidad * venta.precio)
 
     # add it to the session and commit it
     session.add(ventadb)
@@ -51,7 +55,7 @@ async def create_venta(venta: schemas.venta.VentaCreate, token: Annotated[str, D
     return ventadb
 
 
-@router.get("/venta/{id}", response_model=schemas.venta.VentaCreate, tags=["venta"])
+@router.get("/venta/{id}", response_model=schemas.venta.VentaGet, tags=["venta"])
 async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -63,7 +67,13 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the venta item with the given id
-    ventadb = session.query(models.Venta).get(id)
+    ventadb = session.query(models.Venta.distribucion_id,models.Venta.precio, models.Venta.fecha,
+                            models.Venta.punto_id, models.Venta.cantidad, models.Producto.nombre)\
+        .join(models.Distribucion)\
+        .join(models.Inventario)\
+        .join(models.Producto)\
+        .where(models.Venta.id == id)\
+        .first()
 
     # close the session
     session.close()
@@ -72,7 +82,15 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Venta con id {id} no encontrada")
 
-    return ventadb
+    resultdb: dict = {
+        "distribucion_id": ventadb[0],
+        "precio": ventadb[1],
+        "fecha": ventadb[2],
+        "punto_id": ventadb[3],
+        "cantidad": ventadb[4],
+        "nombre_producto": ventadb[5],
+    }
+    return resultdb
 
 
 @router.put("/venta/{id}", tags=["venta"])
@@ -89,11 +107,14 @@ async def update_venta(id: int, venta: schemas.venta.VentaCreate, token: Annotat
     # get the venta item with the given id
     ventadb: schemas.venta.Venta = session.query(models.Venta).get(id)
 
+    time_diff = timedelta(hours=5)
+    new_time = venta.fecha - time_diff
+
     # update todo item with the given task (if an item with the given id was found)
     if ventadb:
         ventadb.cantidad = venta.cantidad
         ventadb.precio = venta.precio
-        ventadb.fecha = venta.fecha
+        ventadb.fecha = new_time
         ventadb.monto = venta.cantidad * venta.precio
         session.commit()
 
@@ -292,15 +313,16 @@ async def read_ventas_brutas_periodo(fecha_inicio: date, fecha_fin: date, token:
 
     # get the negocio item with the given id
     ventasdb = session.query(db.func.sum(models.Venta.monto),
-                            extract("year", models.Venta.fecha),extract("month", models.Venta.fecha),
-                            extract("day", models.Venta.fecha))\
+                             extract("year", models.Venta.fecha), extract(
+                                 "month", models.Venta.fecha),
+                             extract("day", models.Venta.fecha))\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
         .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
         .join(models.User, models.User.id == models.Venta.usuario_id)\
         .where(models.Negocio.propietario_id == current_user.id,
                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
-        .group_by(extract("year", models.Venta.fecha),extract("month", models.Venta.fecha),extract("day", models.Venta.fecha))\
+        .group_by(extract("year", models.Venta.fecha), extract("month", models.Venta.fecha), extract("day", models.Venta.fecha))\
         .all()
 
     resultdb = []
@@ -332,8 +354,9 @@ async def read_utilidades_periodo(fecha_inicio: date, fecha_fin: date, token: An
 
     # get the negocio item with the given id
     ventasdb = session.query(models.Producto.nombre,
-                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
-                             models.Venta.id, models.Inventario.costo, 
+                             models.Punto.nombre, db.func.sum(
+                                 models.Venta.cantidad),
+                             models.Venta.id, models.Inventario.costo,
                              db.func.sum(models.Venta.monto), models.Inventario.precio_venta)\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
