@@ -23,3 +23,8 @@ class UserEdit(BaseModel):
     email: str | None = None
     rol: str
     activo: bool | None = None
+
+class UserCambiaPassword(BaseModel):
+    contrasenna_nueva: str
+    repite_contrasenna_nueva: str
+    contrasenna_actual: str

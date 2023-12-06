@@ -56,47 +56,6 @@ async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends
     return userdb
 
 
-@router.get("/user", response_model=List[schemas.user.UserList], tags=["user"])
-async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-
-    #validando rol de usuario autenticado
-    if current_user.rol != "superadmin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=f"No está autorizado a realizar esta acción")
-
-    # create a new database session
-    session = Session(bind=engine, expire_on_commit=False)
-
-    # get the kiosko item with the given id
-    usersdb = session.query(models.User).all()
-
-    # close the session
-    session.close()
-
-    return usersdb
-
-
-@router.get("/user/propietarios", response_model=List[schemas.user.UserList], tags=["user"])
-async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-
-    #validando rol de usuario autenticado
-    if current_user.rol != "superadmin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=f"No está autorizado a realizar esta acción")
-
-    # create a new database session
-    session = Session(bind=engine, expire_on_commit=False)
-
-    # listado de propietarios
-    usersdb = session.query(models.User).where(
-        models.User.rol == "propietario", models.User.activo == "1")
-
-    # close the session
-    session.close()
-
-    return usersdb
-
-
 @router.get("/user/{id}", response_model=schemas.user.User, tags=["user"])
 async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
@@ -185,3 +144,79 @@ async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
                             detail=f"El usuario {id} no ha sido encontrado")
 
     return None
+
+
+@router.get("/users", response_model=List[schemas.user.UserList], tags=["users"], description="Listado de usuarios")
+async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the kiosko item with the given id
+    usersdb = session.query(models.User).all()
+
+    # close the session
+    session.close()
+
+    return usersdb
+
+
+@router.get("/users-propietarios", response_model=List[schemas.user.UserList], tags=["users"], description="Listado de usuarios con rol propietario")
+async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # listado de propietarios
+    usersdb = session.query(models.User).where(
+        models.User.rol == "propietario", models.User.activo == "1")
+
+    # close the session
+    session.close()
+
+    return usersdb
+
+
+@router.put("/users-cambiar-contrasenna",status_code=status.HTTP_200_OK, tags=["users"])
+async def update_user(user: schemas.user.UserCambiaPassword, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #verificar si las contraseñas nuevas coinciden
+    if user.contrasenna_nueva != user.repite_contrasenna_nueva:
+        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
+                            detail=f"Las contraseñas no coinciden")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the user item with the given id
+    userdb: schemas.user.UserInDB = session.query(models.User)\
+        .where(models.User.usuario == current_user.usuario, models.User.activo == 1).first()
+
+    if not userdb or  not auth.pwd_context.verify(user.contrasenna_actual, userdb.password):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"Verifique su contraseña actual y vuelva a intentar")
+
+    # update user item with the given task (if an item with the given id was found)
+    if userdb:
+        userdb.password = auth.pwd_context.hash(user.contrasenna_nueva)
+        session.commit()
+
+        log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "UPDATE",
+        "tabla": "User",
+        "descripcion": f"Ha editado el password de id {current_user}"
+    })
+
+    # close the session
+    session.close()
