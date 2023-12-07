@@ -28,3 +28,8 @@ class UserCambiaPassword(BaseModel):
     contrasenna_nueva: str
     repite_contrasenna_nueva: str
     contrasenna_actual: str
+
+
+class UserCambiaPasswordAdmin(BaseModel):
+    contrasenna_nueva: str
+    repite_contrasenna_nueva: str

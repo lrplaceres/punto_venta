@@ -220,3 +220,98 @@ async def update_user(user: schemas.user.UserCambiaPassword, token: Annotated[st
 
     # close the session
     session.close()
+
+
+@router.put("/users-cambiar-contrasenna-admin/{id}",status_code=status.HTTP_200_OK, tags=["users"])
+async def update_user(id: int, user: schemas.user.UserCambiaPasswordAdmin, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+  
+   # validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    #verificar si las contraseñas nuevas coinciden
+    if user.contrasenna_nueva != user.repite_contrasenna_nueva:
+        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
+                            detail=f"Las contraseñas no coinciden")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the producto item with the given id
+    userdb: schemas.user.UserInDB = session.query(models.User).get(id)
+
+    # update user item with the given task (if an item with the given id was found)
+    if userdb:
+        userdb.password = auth.pwd_context.hash(user.contrasenna_nueva)
+        session.commit()
+
+        log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "UPDATE",
+        "tabla": "User",
+        "descripcion": f"Ha editado el password de id {current_user}"
+    })
+
+    # close the session
+    session.close()
+
+
+@router.put("/users-desbloquear/{id}", tags=["users"], description="Desbloquear usuario por id")
+async def update_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the producto item with the given id
+    userdb: schemas.user.UserInDB = session.query(models.User).get(id)
+
+    # update user item with the given task (if an item with the given id was found)
+    if userdb:
+        userdb.activo = True
+        session.commit()
+
+        log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "UPDATE",
+        "tabla": "User",
+        "descripcion": f"Ha editado el id {userdb.id}"
+    })
+
+    # close the session
+    session.close()
+
+
+@router.put("/users-bloquear/{id}", tags=["users"], description="Bloquear usuario por id")
+async def update_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the producto item with the given id
+    userdb: schemas.user.UserInDB = session.query(models.User).get(id)
+
+    # update user item with the given task (if an item with the given id was found)
+    if userdb:
+        userdb.activo = False
+        session.commit()
+
+        log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "UPDATE",
+        "tabla": "User",
+        "descripcion": f"Ha editado el id {userdb.id}"
+    })
+
+    # close the session
+    session.close()
