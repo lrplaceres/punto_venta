@@ -198,7 +198,7 @@ async def read_productos_propietario(token: Annotated[str, Depends(auth.oauth2_s
                                models.Negocio.id, models.Negocio.nombre)\
         .join(models.Negocio)\
         .join(models.User)\
-        .where(models.User.usuario == current_user.usuario)\
+        .where(models.User.usuario.like(current_user.usuario))\
         .all()
 
     resultdb = []

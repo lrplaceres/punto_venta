@@ -265,7 +265,7 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
         .join(models.User, models.User.id == models.Negocio.propietario_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
         .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
-        .where(models.User.usuario == current_user.usuario)\
+        .where(models.User.usuario.like(current_user.usuario))\
         .all()
 
     resultdb = []
@@ -299,7 +299,7 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
     distribucionesdb = session.query(models.Distribucion.id, models.Distribucion.cantidad,
                                      models.Distribucion.fecha, models.Punto.id,
                                      models.Producto.nombre, models.Inventario.precio_venta,
-                                     db.func.coalesce(db.func.sum(models.Venta.cantidad), 0),
+                                     db.func.sum(db.func.coalesce(models.Venta.cantidad,0)),
                                      models.Punto.nombre, models.Inventario.um, models.Distribucion.fecha)\
         .select_from(models.Distribucion)\
         .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
@@ -308,8 +308,11 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
         .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
         .outerjoin(models.Venta, models.Venta.distribucion_id == models.Distribucion.id)\
-        .where(models.User.usuario == current_user.usuario)\
-        .group_by(models.Distribucion.inventario_id, models.Distribucion.punto_id, models.Venta.distribucion_id)\
+        .where(models.User.usuario.like(current_user.usuario))\
+        .group_by(models.Distribucion.inventario_id, models.Distribucion.punto_id,
+         models.Venta.distribucion_id, models.Distribucion.id, 
+                models.Punto.id, models.Producto.nombre, models.Inventario.negocio_id,
+                models.Inventario.precio_venta, models.Inventario.um)\
         .order_by(models.Inventario.negocio_id, models.Distribucion.punto_id, models.Producto.nombre)\
         .all()
 
@@ -351,7 +354,7 @@ async def read_distribuciones_propietario(fecha_inicio: date, fecha_fin: date, t
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the distribuciones item with the given id
-    distribucionesdb = session.query(models.Distribucion.id, db.func.sum(models.Distribucion.cantidad),
+    distribucionesdb = session.query(db.func.row_number().over(), db.func.sum(models.Distribucion.cantidad),
                                      models.Punto.nombre, models.Negocio.nombre, 
                                      models.Producto.nombre)\
         .select_from(models.Distribucion)\
@@ -360,9 +363,9 @@ async def read_distribuciones_propietario(fecha_inicio: date, fecha_fin: date, t
         .join(models.User, models.User.id == models.Negocio.propietario_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
         .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
-        .where(models.User.usuario == current_user.usuario,
+        .where(models.User.usuario.like(current_user.usuario),
                 db.func.date(models.Distribucion.fecha) >= fecha_inicio, db.func.date(models.Distribucion.fecha) <= fecha_fin)\
-        .group_by(models.Distribucion.punto_id, models.Producto.nombre)\
+        .group_by(models.Distribucion.punto_id, models.Producto.nombre, models.Negocio.nombre, models.Punto.nombre)\
         .all()
 
     resultdb = []

@@ -175,7 +175,7 @@ async def read_negocios_propietario(token: Annotated[str, Depends(auth.oauth2_sc
     session = Session(bind=engine, expire_on_commit=False)
 
     negociosdb = session.query(models.Negocio).join(
-        models.User).where(models.User.usuario == current_user.usuario).all()
+        models.User).where(models.User.usuario.like(current_user.usuario)).all()
 
     # close the session
     session.close()

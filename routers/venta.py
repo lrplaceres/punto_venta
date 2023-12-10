@@ -218,8 +218,7 @@ async def read_ventas_propietario(fecha: date, token: Annotated[str, Depends(aut
 
     # get the negocio item with the given id
     ventasdb = session.query(models.Producto.nombre,
-                             models.Punto.nombre, db.func.sum(
-                                 models.Venta.cantidad),
+                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
                              models.Venta.id)\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
@@ -231,7 +230,8 @@ async def read_ventas_propietario(fecha: date, token: Annotated[str, Depends(aut
                db.func.extract("year", models.Venta.fecha) == fecha.year,
                db.func.extract("month", models.Venta.fecha) == fecha.month,
                db.func.extract("day", models.Venta.fecha) == fecha.day)\
-        .group_by(models.Venta.distribucion_id)\
+        .group_by(models.Venta.distribucion_id, models.Producto.nombre, 
+                  models.Punto.nombre, models.Venta.id)\
         .order_by(db.func.sum(models.Venta.cantidad).desc())\
         .all()
 
@@ -266,8 +266,7 @@ async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annota
 
     # get the negocio item with the given id
     ventasdb = session.query(models.Producto.nombre,
-                             models.Punto.nombre, db.func.sum(
-                                 models.Venta.cantidad),
+                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
                              models.Venta.id)\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
@@ -277,7 +276,8 @@ async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annota
         .join(models.User, models.User.id == models.Venta.usuario_id)\
         .where(models.Negocio.propietario_id == current_user.id,
                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
-        .group_by(models.Venta.distribucion_id)\
+        .group_by(models.Venta.distribucion_id, models.Producto.nombre, 
+                  models.Punto.nombre, models.Venta.id)\
         .order_by(db.func.sum(models.Venta.cantidad).desc())\
         .all()
 
@@ -353,9 +353,8 @@ async def read_utilidades_periodo(fecha_inicio: date, fecha_fin: date, token: An
 
     # get the negocio item with the given id
     ventasdb = session.query(models.Producto.nombre,
-                             models.Punto.nombre, db.func.sum(
-                                 models.Venta.cantidad),
-                             models.Venta.id, models.Inventario.costo,
+                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
+                             db.func.row_number().over(), models.Inventario.costo,
                              db.func.sum(models.Venta.monto), models.Inventario.precio_venta)\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
@@ -365,7 +364,7 @@ async def read_utilidades_periodo(fecha_inicio: date, fecha_fin: date, token: An
         .join(models.User, models.User.id == models.Venta.usuario_id)\
         .where(models.Negocio.propietario_id == current_user.id,
                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
-        .group_by(models.Venta.distribucion_id)\
+        .group_by(models.Venta.distribucion_id, models.Producto.nombre, models.Punto.nombre, models.Inventario.costo, models.Inventario.precio_venta)\
         .order_by(db.func.sum(models.Venta.cantidad).desc())\
         .all()
 

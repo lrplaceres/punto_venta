@@ -212,7 +212,7 @@ async def read_inventarios_propietario(token: Annotated[str, Depends(auth.oauth2
         .join(models.Negocio)\
         .join(models.User)\
         .join(models.Producto, models.Inventario.producto_id == models.Producto.id)\
-        .where(models.User.usuario == current_user.usuario)\
+        .where(models.User.usuario.like(current_user.usuario))\
         .all()
 
     resultdb = []
@@ -255,8 +255,8 @@ async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oau
         .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
         .join(models.User, models.User.id == models.Negocio.propietario_id)\
         .outerjoin(models.Distribucion, models.Distribucion.inventario_id == models.Inventario.id)\
-        .where(models.User.usuario == current_user.usuario)\
-        .group_by(models.Inventario.producto_id, models.Inventario.costo)\
+        .where(models.User.usuario.like(current_user.usuario))\
+        .group_by(models.Inventario.producto_id, models.Inventario.costo, models.Inventario.id, models.Producto.nombre, models.Negocio.nombre)\
         .order_by(models.Producto.nombre)\
         .all()
 
@@ -307,7 +307,7 @@ async def read_inventarios_propietario(fecha_inicio: date, fecha_fin: date, toke
         .join(models.Negocio)\
         .join(models.User)\
         .join(models.Producto, models.Inventario.producto_id == models.Producto.id)\
-        .where(models.User.usuario == current_user.usuario,
+        .where(models.User.usuario.like(current_user.usuario),
                 db.func.date(models.Inventario.fecha) >= fecha_inicio, db.func.date(models.Inventario.fecha) <= fecha_fin)\
         .group_by(db.extract("year", models.Inventario.fecha), db.extract("month", models.Inventario.fecha), db.extract("day", models.Inventario.fecha))\
         .all()
