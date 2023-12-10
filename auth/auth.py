@@ -34,7 +34,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 def authenticate_user(usuario, password):
    
     session = Session(bind=engine, expire_on_commit=False)
-    user = session.query(models.User).where(models.User.usuario == usuario, models.User.activo == 1).first()
+    user = session.query(models.User).where(models.User.usuario == usuario, models.User.activo == True).first()
 
     if not user:
         return False
@@ -60,7 +60,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     except JWTError:
         raise credentials_exception
     session = Session(bind=engine, expire_on_commit=False)
-    user = session.query(models.User).where(models.User.usuario == username, models.User.activo == 1).first()
+    user = session.query(models.User).where(models.User.usuario == username, models.User.activo == True).first()
     if user is None:
         raise credentials_exception
     return user
