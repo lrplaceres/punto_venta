@@ -2,11 +2,11 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
 import sqlalchemy as db
-from database.database import Base, engine
-import schemas.distribucion
-import models.models as models
-import auth.auth as auth
-import log.log as log
+from app.database.database import Base, engine
+import app.schemas.distribucion
+import app.models.models as models
+import app.auth.auth as auth
+import app.log.log as log
 from datetime import date, datetime
 
 # Create the database
@@ -15,8 +15,8 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 
-@router.post("/distribucion", response_model=schemas.distribucion.Distribucion, status_code=status.HTTP_201_CREATED, tags=["distribucion"])
-async def create_distribucion(distribucion: schemas.distribucion.DistribucionCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.post("/distribucion", response_model=app.schemas.distribucion.Distribucion, status_code=status.HTTP_201_CREATED, tags=["distribucion"])
+async def create_distribucion(distribucion: app.schemas.distribucion.DistribucionCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -68,7 +68,7 @@ async def create_distribucion(distribucion: schemas.distribucion.DistribucionCre
     return distribuciondb
 
 
-@router.get("/distribucion/{id}",response_model=schemas.distribucion.DistribucionGet, tags=["distribucion"])
+@router.get("/distribucion/{id}",response_model=app.schemas.distribucion.DistribucionGet, tags=["distribucion"])
 async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -80,7 +80,7 @@ async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_s
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the distribucion item with the given id
-    distribuciondb: schemas.distribucion.Distribucion = session.query(
+    distribuciondb: app.schemas.distribucion.Distribucion = session.query(
         models.Distribucion.id, models.Distribucion.cantidad, models.Distribucion.fecha,
         models.Distribucion.inventario_id, models.Distribucion.punto_id,
         models.Inventario.negocio_id, models.Inventario.cantidad)\
@@ -135,7 +135,7 @@ async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_s
 
 
 @router.put("/distribucion/{id}", tags=["distribucion"])
-async def update_distribucion(id: int, distribucion: schemas.distribucion.DistribucionCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_distribucion(id: int, distribucion: app.schemas.distribucion.DistribucionCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -146,7 +146,7 @@ async def update_distribucion(id: int, distribucion: schemas.distribucion.Distri
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the producto item with the given id
-    distribuciondb: schemas.distribucion.Distribucion = session.query(
+    distribuciondb: app.schemas.distribucion.Distribucion = session.query(
         models.Distribucion).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
@@ -200,7 +200,7 @@ async def delete_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the distribucion item with the given id
-    distribuciondb: schemas.inventario.Inventario = session.query(
+    distribuciondb: app.schemas.inventario.Inventario = session.query(
         models.Distribucion).get(id)
 
     # verificar si usuario autenticado es propietario del negocio

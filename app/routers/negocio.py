@@ -1,11 +1,11 @@
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
-from database.database import Base, engine
-import schemas.negocio
-import models.models as models
-import auth.auth as auth
-import log.log as log
+from app.database.database import Base, engine
+import app.schemas.negocio
+import app.models.models as models
+import app.auth.auth as auth
+import app.log.log as log
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -13,8 +13,8 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 
-@router.post("/negocio", response_model=schemas.negocio.Negocio, status_code=status.HTTP_201_CREATED, tags=["negocio"])
-async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.post("/negocio", response_model=app.schemas.negocio.Negocio, status_code=status.HTTP_201_CREATED, tags=["negocio"])
+async def create_negocio(negocio: app.schemas.negocio.NegocioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "superadmin":
@@ -50,7 +50,7 @@ async def create_negocio(negocio: schemas.negocio.NegocioCreate, token: Annotate
     return negociodb
 
 
-@router.get("/negocio", response_model=List[schemas.negocio.Negocio], tags=["negocio"])
+@router.get("/negocio", response_model=List[app.schemas.negocio.Negocio], tags=["negocio"])
 async def read_negocio_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -70,7 +70,7 @@ async def read_negocio_list(token: Annotated[str, Depends(auth.oauth2_scheme)], 
     return negociodb
 
 
-@router.get("/negocio/{id}", response_model=schemas.negocio.Negocio, tags=["negocio"])
+@router.get("/negocio/{id}", response_model=app.schemas.negocio.Negocio, tags=["negocio"])
 async def read_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -95,7 +95,7 @@ async def read_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
 
 
 @router.put("/negocio/{id}", tags=["negocio"])
-async def update_negocio(id: int, negocio: schemas.negocio.NegocioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_negocio(id: int, negocio: app.schemas.negocio.NegocioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "superadmin":
@@ -163,7 +163,7 @@ async def delete_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_sche
     return None
 
 
-@router.get("/negocios/", response_model=List[schemas.negocio.Negocio], tags=["negocios"])
+@router.get("/negocios/", response_model=List[app.schemas.negocio.Negocio], tags=["negocios"])
 async def read_negocios_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
