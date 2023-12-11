@@ -161,7 +161,7 @@ async def delete_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     return None
 
 
-@router.get("/ventas", tags=["ventas"])
+@router.get("/ventas", tags=["ventas"], description="Listado de ventas de un propietario")
 async def read_ventas_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -381,6 +381,50 @@ async def read_utilidades_periodo(fecha_inicio: date, fecha_fin: date, token: An
             "precio_inventario": row[6],
             "utilidad_esperada": (row[6] * row[2]) - (row[4] * row[2]),
             "diferencia_utilidad": (row[5] - (row[4] * row[2])) - ((row[6] * row[2]) - (row[4] * row[2])),
+        })
+
+    session.close()
+    return resultdb
+
+
+@router.get("/ventas-punto", tags=["ventas"], description="Listado de ventas de un punto")
+async def read_ventas_dependiente(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "dependiente":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the negocio item with the given id
+    ventasdb = session.query(models.Venta.id, models.Producto.nombre,
+                             models.Punto.nombre, models.Venta.cantidad,
+                             models.Venta.precio, models.Venta.fecha,
+                             models.User.nombre
+                             )\
+        .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .join(models.Punto, models.Punto.id == models.Venta.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.User, models.User.id == models.Venta.usuario_id)\
+        .where(models.Punto.id == current_user.punto_id)\
+        .order_by(models.Venta.fecha.desc())\
+        .all()
+
+    resultdb = []
+    for row in ventasdb:
+        resultdb.append({
+            "id": row[0],
+            "nombre_producto": row[1],
+            "nombre_punto": row[2],
+            "cantidad": row[3],
+            "precio": row[4],
+            "monto": row[3] * row[4],
+            "fecha": row[5],
+            "dependiente": row[6],
         })
 
     session.close()
