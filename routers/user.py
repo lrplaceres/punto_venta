@@ -67,7 +67,7 @@ async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)],
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the kiosko item with the given id
+    # get the user item with the given id
     userdb = session.query(models.User).get(id)
 
     # close the session
@@ -91,7 +91,7 @@ async def update_user(id: int, user: schemas.user.UserEdit, token: Annotated[str
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the producto item with the given id
+    # get the user item with the given id
     userdb: schemas.user.UserInDB = session.query(models.User).get(id)
 
     # update user item with the given task (if an item with the given id was found)

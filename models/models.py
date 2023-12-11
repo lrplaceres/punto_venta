@@ -36,6 +36,7 @@ class Punto(Base):
     negocios: Mapped[int] = relationship("Negocio", back_populates = "puntos")
     distribuciones: Mapped[int] = relationship("Distribucion", back_populates = "puntos", cascade="all, delete-orphan")
     ventas: Mapped[int] = relationship("Venta", back_populates = "puntos", cascade="all, delete-orphan")
+    usuarios: Mapped[int] = relationship("User", back_populates = "puntos")
 
 
 class Producto(Base):
@@ -115,12 +116,14 @@ class User(Base):
     rol: Mapped[str] = Column(String(256))
     activo: Mapped[bool] = Column(Boolean)
     password: Mapped[str] = Column(String(256))
+    punto_id: Mapped[str|None] = Column(Integer, ForeignKey("punto.id"))
     fecha_creado: Mapped[datetime] = Column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     negocios: Mapped[int|None] = relationship("Negocio", back_populates = "propietarios")
     ventas: Mapped[int|None] = relationship("Venta", back_populates = "usuarios")
+    puntos: Mapped[int|None] = relationship("Punto", back_populates = "usuarios")
 
 
 class Log(Base):

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from routers import user, negocio, punto, producto, inventario, distribucion, venta
+from routers import user, negocio, punto, producto, inventario, distribucion, venta, dependiente
 import schemas.token as schemaToken
 import schemas.user as schemaUser
 from typing import Annotated
@@ -36,6 +36,7 @@ app.include_router(inventario.router)
 app.include_router(distribucion.router)
 app.include_router(venta.router)
 app.include_router(user.router)
+app.include_router(dependiente.router)
 
 
 @app.post("/token", response_model=schemaToken.Token)

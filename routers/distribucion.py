@@ -33,7 +33,6 @@ async def create_distribucion(distribucion: schemas.distribucion.DistribucionCre
                models.Negocio.propietario_id == current_user.id)\
         .count()
 
-    print(prop_negocio)
     # verificar si usuario autenticado es propietario del inventario
     prop_inventario = session.query(models.Inventario)\
         .join(models.Negocio)\
