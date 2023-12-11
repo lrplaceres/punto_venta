@@ -24,3 +24,8 @@ class DependienteEdit(BaseModel):
     email: str | None = None
     activo: bool | None = None
     punto_id: int
+
+
+class DependienteCambiaPasswordPropietario(BaseModel):
+    contrasenna_nueva: str
+    repite_contrasenna_nueva: str

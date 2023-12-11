@@ -201,3 +201,111 @@ async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
                             detail=f"El usuario {id} no ha sido encontrado")
 
     return None
+
+
+@router.put("/dependiente-bloquear/{id}", tags=["dependiente"])
+async def update_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the user item with the given id
+    userdb = session.query(models.User)\
+        .join(models.Punto,models.Punto.id == models.User.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id)\
+        .first()
+
+    # update user item with the given task (if an item with the given id was found)
+    if userdb:
+        userdb.activo = False
+        session.commit()
+
+        log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "UPDATE",
+        "tabla": "User",
+        "descripcion": f"Ha editado el dependiente id {userdb.id}"
+    })
+
+    # close the session
+    session.close()
+
+
+@router.put("/dependiente-desbloquear/{id}", tags=["dependiente"])
+async def update_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the user item with the given id
+    userdb = session.query(models.User)\
+        .join(models.Punto,models.Punto.id == models.User.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id)\
+        .first()
+
+    # update user item with the given task (if an item with the given id was found)
+    if userdb:
+        userdb.activo = True
+        session.commit()
+
+        log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "UPDATE",
+        "tabla": "User",
+        "descripcion": f"Ha editado el dependiente id {userdb.id}"
+    })
+
+    # close the session
+    session.close()
+
+
+@router.put("/dependiente-cambiar-contrasenna-propietario/{id}",status_code=status.HTTP_200_OK, tags=["dependiente"])
+async def update_user(id: int, user: schemas.dependiente.DependienteCambiaPasswordPropietario, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+  
+   # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    #verificar si las contraseñas nuevas coinciden
+    if user.contrasenna_nueva != user.repite_contrasenna_nueva:
+        raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
+                            detail=f"Las contraseñas no coinciden")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the producto item with the given id
+   # get the user item with the given id
+    userdb = session.query(models.User)\
+        .join(models.Punto,models.Punto.id == models.User.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id)\
+        .first()
+
+    # update user item with the given task (if an item with the given id was found)
+    if userdb:
+        userdb.password = auth.pwd_context.hash(user.contrasenna_nueva)
+        session.commit()
+
+        log.create_log({
+        "usuario": current_user.usuario,
+        "accion": "UPDATE",
+        "tabla": "User",
+        "descripcion": f"Ha editado el password de id {current_user.id}"
+    })
+
+    # close the session
+    session.close()

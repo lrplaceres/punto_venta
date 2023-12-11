@@ -200,7 +200,7 @@ async def update_user(user: schemas.user.UserCambiaPassword, token: Annotated[st
 
     # get the user item with the given id
     userdb: schemas.user.UserInDB = session.query(models.User)\
-        .where(models.User.usuario == current_user.usuario, models.User.activo == 1).first()
+        .where(models.User.usuario == current_user.usuario, models.User.activo == True).first()
 
     if not userdb or  not auth.pwd_context.verify(user.contrasenna_actual, userdb.password):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
