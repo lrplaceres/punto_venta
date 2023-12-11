@@ -81,7 +81,7 @@ async def read_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the kiosko item with the given id
+    # get the negocio item with the given id
     negociodb = session.query(models.Negocio).get(id)
 
     # close the session

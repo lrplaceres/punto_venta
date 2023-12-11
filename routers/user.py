@@ -157,7 +157,7 @@ async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], cu
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the kiosko item with the given id
+    # get the users item with the given id
     usersdb = session.query(models.User).all()
 
     # close the session

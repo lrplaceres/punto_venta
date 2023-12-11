@@ -79,7 +79,7 @@ async def read_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2_s
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the kiosko item with the given id
+    # get the distribucion item with the given id
     distribuciondb: schemas.distribucion.Distribucion = session.query(
         models.Distribucion.id, models.Distribucion.cantidad, models.Distribucion.fecha,
         models.Distribucion.inventario_id, models.Distribucion.punto_id,

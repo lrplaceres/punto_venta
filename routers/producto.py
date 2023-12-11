@@ -74,7 +74,7 @@ async def read_producto(id: int, token: Annotated[str, Depends(auth.oauth2_schem
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
-    # get the kiosko item with the given id
+    # get the producto item with the given id
     productodb = session.query(models.Producto).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
