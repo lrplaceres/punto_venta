@@ -2,12 +2,12 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
 import sqlalchemy as db
-from database.database import Base, engine
-import schemas.inventario
-import models.models as models
+from ..database.database import Base, engine
+from ..schemas import inventario
+from ..models import models
 from datetime import date
-import auth.auth as auth
-import log.log as log
+from ..auth import auth
+from ..log import log
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -15,8 +15,8 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 
-@router.post("/inventario", response_model=schemas.inventario.Inventario, status_code=status.HTTP_201_CREATED, tags=["inventario"])
-async def create_inventario(inventario: schemas.inventario.InventarioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.post("/inventario", response_model=inventario.Inventario, status_code=status.HTTP_201_CREATED, tags=["inventario"])
+async def create_inventario(inventario: inventario.InventarioCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -67,7 +67,7 @@ async def create_inventario(inventario: schemas.inventario.InventarioCreate, tok
     return inventariodb
 
 
-@router.get("/inventario/{id}", response_model=schemas.inventario.Inventario, tags=["inventario"])
+@router.get("/inventario/{id}", response_model=inventario.Inventario, tags=["inventario"])
 async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -79,7 +79,7 @@ async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_sch
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the inventario item with the given id
-    inventariodb: schemas.inventario.Inventario = session.query(
+    inventariodb: inventario.Inventario = session.query(
         models.Inventario).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
@@ -103,7 +103,7 @@ async def read_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_sch
 
 
 @router.put("/inventario/{id}", tags=["inventario"])
-async def update_inventario(id: int, inventario: schemas.inventario.Inventario, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_inventario(id: int, inventario: inventario.Inventario, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -114,7 +114,7 @@ async def update_inventario(id: int, inventario: schemas.inventario.Inventario, 
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the producto item with the given id
-    inventariodb: schemas.inventario.Inventario = session.query(
+    inventariodb: inventario.Inventario = session.query(
         models.Inventario).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
@@ -163,7 +163,7 @@ async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_s
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the inventario item with the given id
-    inventariodb: schemas.inventario.Inventario = session.query(
+    inventariodb: inventario.Inventario = session.query(
         models.Inventario).get(id)
 
     # verificar si usuario autenticado es propietario del negocio

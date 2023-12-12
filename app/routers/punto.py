@@ -2,11 +2,11 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from database.database import Base, engine
-import schemas.punto
-import models.models as models
-import auth.auth as auth
-import log.log as log
+from ..database.database import Base, engine
+from ..schemas import punto
+from ..models import models
+from ..auth import auth
+from ..log import log
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -14,8 +14,8 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 
-@router.post("/punto", response_model=schemas.punto.Punto, status_code=status.HTTP_201_CREATED, tags=["punto"])
-async def create_punto(punto: schemas.punto.PuntoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.post("/punto", response_model=punto.Punto, status_code=status.HTTP_201_CREATED, tags=["punto"])
+async def create_punto(punto: punto.PuntoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -57,7 +57,7 @@ async def create_punto(punto: schemas.punto.PuntoCreate, token: Annotated[str, D
     return puntodb
 
 
-@router.get("/punto/{id}", response_model=schemas.punto.Punto, tags=["punto"])
+@router.get("/punto/{id}", response_model=punto.Punto, tags=["punto"])
 async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -69,7 +69,7 @@ async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the punto item with the given id
-    puntodb: schemas.punto.Punto = session.query(models.Punto).get(id)
+    puntodb: punto.Punto = session.query(models.Punto).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
     if puntodb:
@@ -93,7 +93,7 @@ async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
 
 
 @router.put("/punto/{id}", tags=["punto"])
-async def update_punto(id: int, punto: schemas.punto.PuntoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_punto(id: int, punto: punto.PuntoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -104,7 +104,7 @@ async def update_punto(id: int, punto: schemas.punto.PuntoCreate, token: Annotat
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the provincia item with the given id
-    puntodb: schemas.punto.Punto = session.query(models.Punto).get(id)
+    puntodb: punto.Punto = session.query(models.Punto).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
     if puntodb:
@@ -148,7 +148,7 @@ async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the punto item with the given id
-    puntodb: schemas.punto.Punto = session.query(models.Punto).get(id)
+    puntodb: punto.Punto = session.query(models.Punto).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
     if puntodb:
@@ -180,7 +180,7 @@ async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     return None
 
 
-@router.get("/puntos/", response_model=List[schemas.punto.Punto], tags=["puntos"])
+@router.get("/puntos/", response_model=List[punto.Punto], tags=["puntos"])
 async def read_puntos_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -212,7 +212,7 @@ async def read_puntos_propietario(token: Annotated[str, Depends(auth.oauth2_sche
     return resultdb
 
 
-@router.get("/puntos-negocio/{id}", response_model=List[schemas.punto.Punto], tags=["puntos"])
+@router.get("/puntos-negocio/{id}", response_model=List[punto.Punto], tags=["puntos"])
 async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado

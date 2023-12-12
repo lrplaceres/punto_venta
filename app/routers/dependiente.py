@@ -1,18 +1,18 @@
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
-from database.database import Base, engine
-import schemas.dependiente
-import models.models as models
+from ..database.database import Base, engine
+from ..schemas import dependiente
+from ..models import models
 from datetime import date
-import auth.auth as auth
-import log.log as log
+from ..auth import auth
+from ..log import log
 
 
 router = APIRouter()
 
-@router.post("/dependiente", response_model=schemas.dependiente.Dependiente, status_code=status.HTTP_201_CREATED, tags=["dependiente"])
-async def create_user(dependiente: schemas.dependiente.DependienteCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.post("/dependiente", response_model=dependiente.Dependiente, status_code=status.HTTP_201_CREATED, tags=["dependiente"])
+async def create_user(dependiente: dependiente.DependienteCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -65,7 +65,7 @@ async def create_user(dependiente: schemas.dependiente.DependienteCreate, token:
     return userdb
 
 
-@router.get("/dependientes", response_model=List[schemas.dependiente.DependienteList], tags=["dependiente"], description="Listado de dependientes por puntos segun propietario")
+@router.get("/dependientes", response_model=List[dependiente.DependienteList], tags=["dependiente"], description="Listado de dependientes por puntos segun propietario")
 async def read_dependientes_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     #validando rol de usuario autenticado
@@ -102,7 +102,7 @@ async def read_dependientes_list(token: Annotated[str, Depends(auth.oauth2_schem
     return resultdb
 
 
-@router.get("/dependiente/{id}", response_model=schemas.dependiente.Dependiente, tags=["dependiente"])
+@router.get("/dependiente/{id}", response_model=dependiente.Dependiente, tags=["dependiente"])
 async def read_dependiente(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -134,7 +134,7 @@ async def read_dependiente(id: int, token: Annotated[str, Depends(auth.oauth2_sc
 
 
 @router.put("/dependiente/{id}", tags=["dependiente"])
-async def update_user(id: int, user: schemas.dependiente.DependienteEdit, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_user(id: int, user: dependiente.DependienteEdit, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -272,7 +272,7 @@ async def update_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
 
 
 @router.put("/dependiente-cambiar-contrasenna-propietario/{id}",status_code=status.HTTP_200_OK, tags=["dependiente"])
-async def update_user(id: int, user: schemas.dependiente.DependienteCambiaPasswordPropietario, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_user(id: int, user: dependiente.DependienteCambiaPasswordPropietario, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
   
    # validando rol de usuario autenticado
     if current_user.rol != "propietario":

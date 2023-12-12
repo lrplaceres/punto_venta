@@ -1,10 +1,9 @@
-import schemas.token
-import schemas.user
+from ..schemas import token, user
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from database.database import engine
-import models.models as models
+from ..database.database import engine
+from ..models import models
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from typing import Annotated

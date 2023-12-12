@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-import models.models as models
+from ..models import models
 from typing import List, Annotated
 from fastapi import Depends
-import auth.auth as auth
-from database.database import Base, engine
+from ..auth import auth
+from ..database.database import Base, engine
 
 
 def create_log(log: dict):

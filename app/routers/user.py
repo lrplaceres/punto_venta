@@ -1,12 +1,12 @@
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
-from database.database import Base, engine
-import schemas.user
-import models.models as models
+from ..database.database import Base, engine
+from ..schemas import user
+from ..models import models
 from datetime import date
-import auth.auth as auth
-import log.log as log
+from ..auth import auth
+from ..log import log
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -14,8 +14,8 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 
-@router.post("/user", response_model=schemas.user.User, status_code=status.HTTP_201_CREATED, tags=["user"])
-async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.post("/user", response_model=user.User, status_code=status.HTTP_201_CREATED, tags=["user"])
+async def create_user(user: user.UserInDB, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "superadmin":
@@ -56,7 +56,7 @@ async def create_user(user: schemas.user.UserInDB, token: Annotated[str, Depends
     return userdb
 
 
-@router.get("/user/{id}", response_model=schemas.user.User, tags=["user"])
+@router.get("/user/{id}", response_model=user.User, tags=["user"])
 async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -81,7 +81,7 @@ async def read_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)],
 
 
 @router.put("/user/{id}", tags=["user"])
-async def update_user(id: int, user: schemas.user.UserEdit, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_user(id: int, user: user.UserEdit, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "superadmin":
@@ -146,7 +146,7 @@ async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
     return None
 
 
-@router.get("/users", response_model=List[schemas.user.UserList], tags=["users"], description="Listado de usuarios")
+@router.get("/users", response_model=List[user.UserList], tags=["users"], description="Listado de usuarios")
 async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     #validando rol de usuario autenticado
@@ -166,7 +166,7 @@ async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], cu
     return usersdb
 
 
-@router.get("/users-propietarios", response_model=List[schemas.user.UserList], tags=["users"], description="Listado de usuarios con rol propietario")
+@router.get("/users-propietarios", response_model=List[user.UserList], tags=["users"], description="Listado de usuarios con rol propietario")
 async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     #validando rol de usuario autenticado
@@ -188,7 +188,7 @@ async def read_users_listpropietarios(token: Annotated[str, Depends(auth.oauth2_
 
 
 @router.put("/users-cambiar-contrasenna",status_code=status.HTTP_200_OK, tags=["users"])
-async def update_user(user: schemas.user.UserCambiaPassword, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_user(user: user.UserCambiaPassword, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     #verificar si las contraseñas nuevas coinciden
     if user.contrasenna_nueva != user.repite_contrasenna_nueva:
@@ -223,7 +223,7 @@ async def update_user(user: schemas.user.UserCambiaPassword, token: Annotated[st
 
 
 @router.put("/users-cambiar-contrasenna-admin/{id}",status_code=status.HTTP_200_OK, tags=["users"])
-async def update_user(id: int, user: schemas.user.UserCambiaPasswordAdmin, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_user(id: int, user: user.UserCambiaPasswordAdmin, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
   
    # validando rol de usuario autenticado
     if current_user.rol != "superadmin":

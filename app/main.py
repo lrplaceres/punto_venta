@@ -1,12 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from routers import user, negocio, punto, producto, inventario, distribucion, venta, dependiente
-import schemas.token as schemaToken
-import schemas.user as schemaUser
+from .routers import user, negocio, punto, producto, inventario, distribucion, venta, dependiente
+from .schemas import token, user as schemaUser
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-import auth.auth as auth
+from .auth import auth
 from datetime import datetime, timedelta
-import models.models as models
+from .models import models
 from typing import Annotated
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,7 +38,7 @@ app.include_router(user.router)
 app.include_router(dependiente.router)
 
 
-@app.post("/token", response_model=schemaToken.Token)
+@app.post("/token", response_model=token.Token)
 async def login_for_access_token(form_data: Annotated[auth.OAuth2PasswordRequestForm, Depends()]):
 
     user = auth.authenticate_user(form_data.username, form_data.password)
