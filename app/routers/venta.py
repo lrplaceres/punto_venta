@@ -2,12 +2,12 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
 import sqlalchemy as db
-from app.database.database import Base, engine
-import app.schemas.venta
-import app.models.models as models
+from database.database import Base, engine
+import schemas.venta
+import models.models as models
 from datetime import date, datetime, timedelta
-import app.auth.auth as auth
-import app.log.log as log
+import auth.auth as auth
+import log.log as log
 from pytz import UTC
 
 # Create the database
@@ -16,8 +16,8 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 
-@router.post("/venta", response_model=app.schemas.venta.Venta, status_code=status.HTTP_201_CREATED, tags=["venta"])
-async def create_venta(venta: app.schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.post("/venta", response_model=schemas.venta.Venta, status_code=status.HTTP_201_CREATED, tags=["venta"])
+async def create_venta(venta: schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario" and current_user.rol != "dependiente":
@@ -54,7 +54,7 @@ async def create_venta(venta: app.schemas.venta.VentaCreate, token: Annotated[st
     return ventadb
 
 
-@router.get("/venta/{id}", response_model=app.schemas.venta.VentaGet, tags=["venta"])
+@router.get("/venta/{id}", response_model=schemas.venta.VentaGet, tags=["venta"])
 async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -93,7 +93,7 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
 
 
 @router.put("/venta/{id}", tags=["venta"])
-async def update_venta(id: int, venta: app.schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_venta(id: int, venta: schemas.venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario" and current_user.rol != "dependiente":
@@ -104,7 +104,7 @@ async def update_venta(id: int, venta: app.schemas.venta.VentaCreate, token: Ann
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the venta item with the given id
-    ventadb: app.schemas.venta.Venta = session.query(models.Venta).get(id)
+    ventadb: schemas.venta.Venta = session.query(models.Venta).get(id)
 
     time_diff = timedelta(hours=5)
     new_time = venta.fecha - time_diff

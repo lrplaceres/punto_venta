@@ -1,12 +1,12 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from app.routers import user, negocio, punto, producto, inventario, distribucion, venta, dependiente
-import app.schemas.token as schemaToken
-import app.schemas.user as schemaUser
+from routers import user, negocio, punto, producto, inventario, distribucion, venta, dependiente
+import schemas.token as schemaToken
+import schemas.user as schemaUser
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-import app.auth.auth as auth
+import auth.auth as auth
 from datetime import datetime, timedelta
-import app.models.models as models
+import models.models as models
 from typing import Annotated
 
 from fastapi.middleware.cors import CORSMiddleware

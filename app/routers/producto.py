@@ -1,11 +1,11 @@
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
-from app.database.database import Base, engine
-import app.schemas.producto
-import app.models.models as models
-import app.auth.auth as auth
-import app.log.log as log
+from database.database import Base, engine
+import schemas.producto
+import models.models as models
+import auth.auth as auth
+import log.log as log
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -13,8 +13,8 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 
-@router.post("/producto", response_model=app.schemas.producto.Producto, status_code=status.HTTP_201_CREATED, tags=["producto"])
-async def create_producto(producto: app.schemas.producto.ProductoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.post("/producto", response_model=schemas.producto.Producto, status_code=status.HTTP_201_CREATED, tags=["producto"])
+async def create_producto(producto: schemas.producto.ProductoCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -98,7 +98,7 @@ async def read_producto(id: int, token: Annotated[str, Depends(auth.oauth2_schem
 
 
 @router.put("/producto/{id}", tags=["producto"])
-async def update_producto(id: int, producto: app.schemas.producto.Producto, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+async def update_producto(id: int, producto: schemas.producto.Producto, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -109,7 +109,7 @@ async def update_producto(id: int, producto: app.schemas.producto.Producto, toke
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the producto item with the given id
-    productodb: app.schemas.producto.Producto = session.query(
+    productodb: schemas.producto.Producto = session.query(
         models.Producto).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
