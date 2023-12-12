@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from .routers import user, negocio, punto, producto, inventario, distribucion, venta, dependiente
+from routers import user, negocio, punto, producto, inventario, distribucion, venta, dependiente
 import schemas.token as schemaToken
 import schemas.user as schemaUser
 from typing import Annotated

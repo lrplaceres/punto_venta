@@ -2,7 +2,7 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
 import sqlalchemy as db
-from ..database.database import Base, engine
+from database.database import Base, engine
 import schemas.inventario
 import models.models as models
 from datetime import date

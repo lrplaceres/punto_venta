@@ -2,7 +2,7 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from ..database.database import Base, engine
+from database.database import Base, engine
 import schemas.punto
 import models.models as models
 import auth.auth as auth
