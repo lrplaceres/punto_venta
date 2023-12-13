@@ -1,4 +1,4 @@
-from ..schemas import token, user
+from ..schemas import token as tokenSchema, user
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -55,7 +55,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-        token_data = schemas.token.TokenData(username=username)
+        token_data = tokenSchema.TokenData(username=username)
     except JWTError:
         raise credentials_exception
     session = Session(bind=engine, expire_on_commit=False)
