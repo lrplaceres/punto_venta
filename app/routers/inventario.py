@@ -257,7 +257,7 @@ async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oau
         .outerjoin(models.Distribucion, models.Distribucion.inventario_id == models.Inventario.id)\
         .where(models.User.usuario.like(current_user.usuario))\
         .group_by(models.Inventario.producto_id, models.Inventario.costo, models.Inventario.id, models.Producto.nombre, models.Negocio.nombre)\
-        .order_by(models.Producto.nombre)\
+        .order_by(db.func.sum(db.func.coalesce((models.Distribucion.cantidad), 0)).desc(), models.Producto.nombre)\
         .all()
 
     resultdb = []
@@ -322,3 +322,27 @@ async def read_inventarios_propietario(fecha_inicio: date, fecha_fin: date, toke
 
     session.close()
     return resultdb
+
+
+@router.get("/inventarios-contador/{fecha_inicio}/{fecha_fin}", tags=["admin"], description="Contador de inventarios")
+async def read_count_inventarios(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the inventarios item with the given id
+    contadorInventarios = session.query(models.Inventario).count()
+
+    contadorInventariosFecha = session.query(models.Inventario)\
+                                .where(models.Inventario.fecha_creado >= fecha_inicio, models.Inventario.fecha_creado <= fecha_fin)\
+                                .count()
+
+    # close the session
+    session.close()
+    
+    return {"cantidad_inventarios": contadorInventarios, "nuevos_inventarios":contadorInventariosFecha }

@@ -96,6 +96,8 @@ class Venta(Base):
     precio: Mapped[float] = Column(Float(2))
     monto: Mapped[float] = Column(Float(2))
     fecha: Mapped[datetime] = Column(DateTime)
+    pago_diferido: Mapped[bool] = Column(Boolean)
+    descripcion: Mapped[str | None] = Column(String(256))
     punto_id: Mapped[str] = Column(Integer, ForeignKey("punto.id"))
     usuario_id: Mapped[str] = Column(Integer, ForeignKey("user.id"))
     fecha_creado: Mapped[datetime] = Column(

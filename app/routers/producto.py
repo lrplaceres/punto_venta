@@ -6,6 +6,7 @@ from ..schemas import producto
 from ..models import models
 from ..auth import auth
 from ..log import log
+from datetime import date
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -215,3 +216,27 @@ async def read_productos_propietario(token: Annotated[str, Depends(auth.oauth2_s
     session.close()
 
     return resultdb
+
+
+@router.get("/productos-contador/{fecha_inicio}/{fecha_fin}", tags=["admin"], description="Contador de productos")
+async def read_count_productos(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the productos item with the given id
+    contadorProductos = session.query(models.Producto).count()
+
+    contadorProductosFecha = session.query(models.Producto)\
+                                .where(models.Producto.fecha_creado >= fecha_inicio, models.Producto.fecha_creado <= fecha_fin)\
+                                .count()
+
+    # close the session
+    session.close()
+    
+    return {"cantidad_productos": contadorProductos, "nuevos_productos":contadorProductosFecha }

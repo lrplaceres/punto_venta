@@ -7,6 +7,7 @@ from ..schemas import punto
 from ..models import models
 from ..auth import auth
 from ..log import log
+from datetime import date
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -246,3 +247,27 @@ async def read_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
                             detail=f"No se han encontrado Puntos del negocio {id}")
 
     return puntosdb
+
+
+@router.get("/puntos-contador/{fecha_inicio}/{fecha_fin}", tags=["admin"], description="Contador de puntos")
+async def read_count_puntos(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the puntos item with the given id
+    contadorPuntos = session.query(models.Punto).count()
+
+    contadorPuntosFecha = session.query(models.Punto)\
+                                .where(models.Punto.fecha_creado >= fecha_inicio, models.Punto.fecha_creado <= fecha_fin)\
+                                .count()
+
+    # close the session
+    session.close()
+    
+    return {"cantidad_puntos": contadorPuntos, "nuevos_puntos":contadorPuntosFecha }

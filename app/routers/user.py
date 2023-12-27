@@ -315,3 +315,27 @@ async def update_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
 
     # close the session
     session.close()
+
+
+@router.get("/users-contador/{fecha_inicio}/{fecha_fin}", tags=["admin"], description="Contador de usuarios")
+async def read_count_users(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the users item with the given id
+    contadorUsuarios = session.query(models.User).count()
+
+    contadorNuevosUsuariosFecha = session.query(models.User)\
+                                .where(models.User.fecha_creado >= fecha_inicio, models.User.fecha_creado <= fecha_fin)\
+                                .count()
+
+    # close the session
+    session.close()
+    
+    return {"cantidad_usuarios": contadorUsuarios, "nuevos_usuarios":contadorNuevosUsuariosFecha }

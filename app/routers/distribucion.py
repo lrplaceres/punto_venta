@@ -331,7 +331,7 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
                 "fecha": row[9],
                 "existencia": row[1] - row[6]
             })
-
+            
     session.close()
     return resultdb
 
@@ -365,6 +365,7 @@ async def read_distribuciones_propietario(fecha_inicio: date, fecha_fin: date, t
         .where(models.User.usuario.like(current_user.usuario),
                 db.func.date(models.Distribucion.fecha) >= fecha_inicio, db.func.date(models.Distribucion.fecha) <= fecha_fin)\
         .group_by(models.Distribucion.punto_id, models.Producto.nombre, models.Negocio.nombre, models.Punto.nombre)\
+        .order_by(db.func.sum(models.Distribucion.cantidad).desc(), models.Producto.nombre)\
         .all()
 
     resultdb = []
@@ -432,3 +433,27 @@ async def read_distribuciones_dependiente(token: Annotated[str, Depends(auth.oau
 
     session.close()
     return resultdb
+
+
+@router.get("/distribuciones-contador/{fecha_inicio}/{fecha_fin}", tags=["admin"], description="Contador de distribuciones")
+async def read_count_distribuciones(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the distribuciones item with the given id
+    contadorDistribuciones = session.query(models.Distribucion).count()
+
+    contadorDistribucionesFecha = session.query(models.Distribucion)\
+                                .where(models.Distribucion.fecha_creado >= fecha_inicio, models.Distribucion.fecha_creado <= fecha_fin)\
+                                .count()
+
+    # close the session
+    session.close()
+    
+    return {"cantidad_distribuciones": contadorDistribuciones, "nuevas_distribuciones":contadorDistribucionesFecha }

@@ -16,7 +16,7 @@ Base.metadata.create_all(engine)
 router = APIRouter()
 
 
-@router.post("/venta", response_model=venta.Venta, status_code=status.HTTP_201_CREATED, tags=["venta"])
+@router.post("/venta", response_model=venta.Venta, status_code=status.HTTP_201_CREATED, tags=["venta"], description="Insertar venta")
 async def create_venta(venta: venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -33,7 +33,8 @@ async def create_venta(venta: venta.VentaCreate, token: Annotated[str, Depends(a
     # create an instance of the venta database model
     ventadb = models.Venta(distribucion_id=venta.distribucion_id, cantidad=venta.cantidad,
                            precio=venta.precio, fecha=new_time, punto_id=venta.punto_id,
-                           usuario_id=current_user.id, monto=venta.cantidad * venta.precio)
+                           usuario_id=current_user.id, monto=venta.cantidad * venta.precio,
+                           pago_diferido = venta.pago_diferido, descripcion = venta.descripcion)
 
     # add it to the session and commit it
     session.add(ventadb)
@@ -54,7 +55,7 @@ async def create_venta(venta: venta.VentaCreate, token: Annotated[str, Depends(a
     return ventadb
 
 
-@router.get("/venta/{id}", response_model=venta.VentaGet, tags=["venta"])
+@router.get("/venta/{id}", response_model=venta.VentaGet, tags=["venta"], description="Obtener venta")
 async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -67,7 +68,8 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
 
     # get the venta item with the given id
     ventadb = session.query(models.Venta.distribucion_id,models.Venta.precio, models.Venta.fecha,
-                            models.Venta.punto_id, models.Venta.cantidad, models.Producto.nombre)\
+                            models.Venta.punto_id, models.Venta.cantidad, models.Producto.nombre,
+                            models.Venta.pago_diferido, models.Venta.descripcion)\
         .join(models.Distribucion)\
         .join(models.Inventario)\
         .join(models.Producto)\
@@ -88,11 +90,13 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
         "punto_id": ventadb[3],
         "cantidad": ventadb[4],
         "nombre_producto": ventadb[5],
+        "pago_diferido": ventadb[6],
+        "descripcion": ventadb[7],
     }
     return resultdb
 
 
-@router.put("/venta/{id}", tags=["venta"])
+@router.put("/venta/{id}", tags=["venta"], description="Actualizar venta")
 async def update_venta(id: int, venta: venta.VentaCreate, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -115,6 +119,8 @@ async def update_venta(id: int, venta: venta.VentaCreate, token: Annotated[str, 
         ventadb.precio = venta.precio
         ventadb.fecha = new_time
         ventadb.monto = venta.cantidad * venta.precio
+        ventadb.pago_diferido = venta.pago_diferido
+        ventadb.descripcion = venta.descripcion
         session.commit()
 
         log.create_log({
@@ -128,7 +134,7 @@ async def update_venta(id: int, venta: venta.VentaCreate, token: Annotated[str, 
     session.close()
 
 
-@router.delete("/venta/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["venta"])
+@router.delete("/venta/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["venta"], description="Eliminar venta")
 async def delete_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -176,7 +182,8 @@ async def read_ventas_propietario(token: Annotated[str, Depends(auth.oauth2_sche
     ventasdb = session.query(models.Venta.id, models.Producto.nombre,
                              models.Punto.nombre, models.Venta.cantidad,
                              models.Venta.precio, models.Venta.fecha,
-                             models.User.nombre
+                             models.User.nombre, models.Venta.pago_diferido,
+                             models.Venta.descripcion
                              )\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
@@ -199,13 +206,15 @@ async def read_ventas_propietario(token: Annotated[str, Depends(auth.oauth2_sche
             "monto": row[3] * row[4],
             "fecha": row[5],
             "dependiente": row[6],
+            "pago_diferido": row[7],
+            "descripcion": row[8],
         })
 
     session.close()
     return resultdb
 
 
-@router.get("/ventas-dia/{fecha}", tags=["ventas"])
+@router.get("/ventas-dia/{fecha}", tags=["ventas"], description="Ventas por dia seleccionado")
 async def read_ventas_propietario(fecha: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -219,7 +228,7 @@ async def read_ventas_propietario(fecha: date, token: Annotated[str, Depends(aut
     # get the negocio item with the given id
     ventasdb = session.query(models.Producto.nombre,
                              models.Punto.nombre, db.func.sum(models.Venta.cantidad),
-                             models.Venta.id)\
+                             db.func.row_number().over())\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
         .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
@@ -230,8 +239,7 @@ async def read_ventas_propietario(fecha: date, token: Annotated[str, Depends(aut
                db.func.extract("year", models.Venta.fecha) == fecha.year,
                db.func.extract("month", models.Venta.fecha) == fecha.month,
                db.func.extract("day", models.Venta.fecha) == fecha.day)\
-        .group_by(models.Venta.distribucion_id, models.Producto.nombre, 
-                  models.Punto.nombre, models.Venta.id)\
+        .group_by(models.Producto.nombre, models.Punto.nombre)\
         .order_by(db.func.sum(models.Venta.cantidad).desc())\
         .all()
 
@@ -241,7 +249,7 @@ async def read_ventas_propietario(fecha: date, token: Annotated[str, Depends(aut
             "nombre_producto": row[0],
             "nombre_punto": row[1],
             "cantidad": row[2],
-            "id": row[3]
+            "id": row[3],
         })
 
     session.close()
@@ -267,7 +275,7 @@ async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annota
     # get the negocio item with the given id
     ventasdb = session.query(models.Producto.nombre,
                              models.Punto.nombre, db.func.sum(models.Venta.cantidad),
-                             models.Venta.id)\
+                             db.func.row_number().over())\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
         .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
@@ -276,8 +284,7 @@ async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annota
         .join(models.User, models.User.id == models.Venta.usuario_id)\
         .where(models.Negocio.propietario_id == current_user.id,
                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
-        .group_by(models.Venta.distribucion_id, models.Producto.nombre, 
-                  models.Punto.nombre, models.Venta.id)\
+        .group_by(models.Producto.nombre, models.Punto.nombre)\
         .order_by(db.func.sum(models.Venta.cantidad).desc())\
         .all()
 
@@ -287,7 +294,7 @@ async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annota
             "nombre_producto": row[0],
             "nombre_punto": row[1],
             "cantidad": row[2],
-            "id": row[3]
+            "id": row[3],
         })
 
     session.close()
@@ -429,3 +436,27 @@ async def read_ventas_dependiente(token: Annotated[str, Depends(auth.oauth2_sche
 
     session.close()
     return resultdb
+
+
+@router.get("/ventas-contador/{fecha_inicio}/{fecha_fin}", tags=["admin"], description="Contador de ventas")
+async def read_count_ventas(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    #validando rol de usuario autenticado
+    if current_user.rol != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the ventas item with the given id
+    contadorVentas = session.query(models.Venta).count()
+
+    contadorVentasFecha = session.query(models.Venta)\
+                                .where(models.Venta.fecha_creado >= fecha_inicio, models.Venta.fecha_creado <= fecha_fin)\
+                                .count()
+
+    # close the session
+    session.close()
+    
+    return {"cantidad_ventas": contadorVentas, "nuevas_ventas":contadorVentasFecha }

@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 # openssl rand -hex 32
 SECRET_KEY = "ce32120a340062fe6e11e77cf10cabcd05a76a381075e610ae66c69065bfd84b"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1200
+ACCESS_TOKEN_EXPIRE_MINUTES = 1051920
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

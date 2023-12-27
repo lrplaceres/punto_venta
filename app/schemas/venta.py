@@ -8,6 +8,8 @@ class VentaCreate(BaseModel):
     precio: float
     fecha: datetime
     punto_id: int
+    pago_diferido: bool
+    descripcion: str | None
     
 # Complete Venta Schema (Pydantic Model)
 class Venta(BaseModel):
@@ -18,6 +20,8 @@ class Venta(BaseModel):
     monto: float
     fecha: datetime
     punto_id: int
+    pago_diferido: bool
+    descripcion: str | None
     usuario_id: int
 
 
@@ -28,3 +32,5 @@ class VentaGet(BaseModel):
     fecha: datetime
     punto_id: int
     nombre_producto: str
+    pago_diferido: bool
+    descripcion: str | None

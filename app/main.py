@@ -37,6 +37,11 @@ app.include_router(user.router)
 app.include_router(dependiente.router)
 
 
+@app.get("/")
+async def index():
+    return "Welcome"
+
+
 @app.post("/token", response_model=token.Token)
 async def login_for_access_token(form_data: Annotated[auth.OAuth2PasswordRequestForm, Depends()]):
 
@@ -51,7 +56,7 @@ async def login_for_access_token(form_data: Annotated[auth.OAuth2PasswordRequest
     access_token = auth.create_access_token(
         data={"sub": user.usuario}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "usuario":user.usuario, "rol":user.rol, "name":user.nombre}
+    return {"access_token": access_token, "usuario":user.usuario, "rol":user.rol, "name":user.nombre}
 
 
 @app.get("/users/me/", response_model=schemaUser.User)
