@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from ..auth import auth
 from ..log import log
 from pytz import UTC
+from ..routers import distribucion as distribucionRouter
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -27,6 +28,39 @@ async def create_venta(venta: venta.VentaCreate, token: Annotated[str, Depends(a
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
 
+    if current_user.rol == "propietario":
+        # verificar si usuario autenticado le pertenece la distribucion y el punto
+        distribuciondb = session.query(models.Distribucion)\
+            .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+            .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
+            .join(models.Punto, models.Punto.negocio_id == models.Negocio.id)\
+            .where(models.Negocio.propietario_id == current_user.id, models.Distribucion.id == venta.distribucion_id, 
+                   models.Punto.id == venta.punto_id)\
+            .count()      
+
+        if not distribuciondb:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
+
+    if current_user.rol == "dependiente":
+        # verificar si usuario autenticado le pertenece el punto y la distribucion
+        puntodb = session.query(models.Punto)\
+            .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+            .join(models.Inventario, models.Inventario.negocio_id == models.Negocio.id)\
+            .join(models.Distribucion, models.Distribucion.inventario_id ==  models.Inventario.id)\
+            .where(models.Punto.id == current_user.punto_id, models.Punto.id == venta.punto_id, models.Distribucion.id == venta.distribucion_id)\
+            .count()      
+
+        if not puntodb:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
+
+    existencia = distribucionRouter.existencia_distribucion_producto(venta.distribucion_id)
+    print(existencia)
+    if not existencia.get("disponible") or existencia.get("disponible") < venta.cantidad:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
+                            detail=f"El producto no está disponible")
+   
     time_diff = timedelta(hours=5)
     new_time = venta.fecha - time_diff
 
@@ -65,7 +99,7 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
-
+    
     # get the venta item with the given id
     ventadb = session.query(models.Venta.distribucion_id,models.Venta.precio, models.Venta.fecha,
                             models.Venta.punto_id, models.Venta.cantidad, models.Producto.nombre,
@@ -73,7 +107,8 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
         .join(models.Distribucion)\
         .join(models.Inventario)\
         .join(models.Producto)\
-        .where(models.Venta.id == id)\
+        .join(models.Negocio)\
+        .where(models.Venta.id == id, models.Negocio.propietario_id == current_user.id)\
         .first()
 
     # close the session
@@ -106,6 +141,20 @@ async def update_venta(id: int, venta: venta.VentaCreate, token: Annotated[str, 
 
     # create a new database session
     session = Session(bind=engine, expire_on_commit=False)
+
+    if current_user.rol == "propietario":
+        # verificar si usuario autenticado le pertenece la distribucion y el punto
+        distribuciondb = session.query(models.Distribucion)\
+            .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+            .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
+            .join(models.Punto, models.Punto.negocio_id == models.Negocio.id)\
+            .where(models.Negocio.propietario_id == current_user.id, models.Distribucion.id == venta.distribucion_id, 
+                   models.Punto.id == venta.punto_id)\
+            .count()      
+
+        if not distribuciondb:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
 
     # get the venta item with the given id
     ventadb: venta.Venta = session.query(models.Venta).get(id)
@@ -146,7 +195,23 @@ async def delete_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the venta item with the given id
-    ventadb = session.query(models.Venta).get(id)
+    #ventadb = session.query(models.Venta).get(id)
+
+    if current_user.rol == "propietario":
+        # get the venta item with the given id
+        ventadb = session.query(models.Venta)\
+            .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+            .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+            .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
+            .where(models.Venta.id == id, models.Negocio.propietario_id == current_user.id)\
+            .first()
+
+    if current_user.rol == "dependiente":
+        ventadb = session.query(models.Venta)\
+            .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+            .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
+            .where(models.Venta.id == id, models.Punto.id == current_user.punto_id, models.Venta.usuario_id == current_user.id)\
+            .first()
 
     # if todo item with given id exists, delete it from the database. Otherwise raise 404 error
     if ventadb:
@@ -328,6 +393,7 @@ async def read_ventas_brutas_periodo(fecha_inicio: date, fecha_fin: date, token:
         .where(models.Negocio.propietario_id == current_user.id,
                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
         .group_by(db.extract("year", models.Venta.fecha), db.extract("month", models.Venta.fecha), db.extract("day", models.Venta.fecha))\
+        .order_by(db.extract("year", models.Venta.fecha), db.extract("month", models.Venta.fecha), db.extract("day", models.Venta.fecha).desc())\
         .all()
 
     resultdb = []

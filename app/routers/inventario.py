@@ -257,7 +257,7 @@ async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oau
         .outerjoin(models.Distribucion, models.Distribucion.inventario_id == models.Inventario.id)\
         .where(models.User.usuario.like(current_user.usuario))\
         .group_by(models.Inventario.producto_id, models.Inventario.costo, models.Inventario.id, models.Producto.nombre, models.Negocio.nombre)\
-        .order_by(db.func.sum(db.func.coalesce((models.Distribucion.cantidad), 0)).desc(), models.Producto.nombre)\
+        .order_by(models.Producto.nombre)\
         .all()
 
     resultdb = []
@@ -310,6 +310,7 @@ async def read_inventarios_propietario(fecha_inicio: date, fecha_fin: date, toke
         .where(models.User.usuario.like(current_user.usuario),
                 db.func.date(models.Inventario.fecha) >= fecha_inicio, db.func.date(models.Inventario.fecha) <= fecha_fin)\
         .group_by(db.extract("year", models.Inventario.fecha), db.extract("month", models.Inventario.fecha), db.extract("day", models.Inventario.fecha))\
+        .order_by(db.extract("year", models.Inventario.fecha), db.extract("month", models.Inventario.fecha), db.extract("day", models.Inventario.fecha).desc())\
         .all()
 
     resultdb = []

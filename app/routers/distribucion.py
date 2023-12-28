@@ -457,3 +457,22 @@ async def read_count_distribuciones(fecha_inicio: date, fecha_fin: date, token: 
     session.close()
     
     return {"cantidad_distribuciones": contadorDistribuciones, "nuevas_distribuciones":contadorDistribucionesFecha }
+
+
+
+def existencia_distribucion_producto(distribucion_id: int):  
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the distribuciones item with the given id
+    distribucionesdb = session.query(db.func.sum(models.Distribucion.cantidad), db.func.sum(db.func.coalesce(models.Venta.cantidad,0)))\
+        .select_from(models.Distribucion)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .outerjoin(models.Venta, models.Venta.distribucion_id == models.Distribucion.id)\
+        .where(models.Distribucion.id == distribucion_id)\
+        .group_by(models.Distribucion.inventario_id)\
+        .all()
+            
+    session.close()
+    return {"disponible" : distribucionesdb[0][0] - distribucionesdb[0][1]}
