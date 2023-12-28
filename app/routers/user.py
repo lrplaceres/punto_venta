@@ -158,7 +158,7 @@ async def read_users_list(token: Annotated[str, Depends(auth.oauth2_scheme)], cu
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the users item with the given id
-    usersdb = session.query(models.User).all()
+    usersdb = session.query(models.User).order_by(models.User.usuario).all()
 
     # close the session
     session.close()

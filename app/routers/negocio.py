@@ -164,7 +164,7 @@ async def delete_negocio(id: int, token: Annotated[str, Depends(auth.oauth2_sche
     return None
 
 
-@router.get("/negocios/", response_model=List[negocio.Negocio], tags=["negocios"])
+@router.get("/negocios/", response_model=List[negocio.Negocio], tags=["negocios"], description="Listado de negocios")
 async def read_negocios_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -176,7 +176,7 @@ async def read_negocios_propietario(token: Annotated[str, Depends(auth.oauth2_sc
     session = Session(bind=engine, expire_on_commit=False)
 
     negociosdb = session.query(models.Negocio).join(
-        models.User).where(models.User.usuario.like(current_user.usuario)).all()
+        models.User).where(models.User.usuario.like(current_user.usuario)).order_by(models.Negocio.nombre).all()
 
     # close the session
     session.close()
