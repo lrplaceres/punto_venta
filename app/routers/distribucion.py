@@ -30,14 +30,14 @@ async def create_distribucion(distribucion: distribucion.DistribucionCreate, tok
     prop_negocio = session.query(models.Punto)\
         .join(models.Negocio)\
         .where(models.Punto.id == distribucion.punto_id,
-               models.Negocio.propietario_id == current_user.id)\
+               models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
         .count()
 
     # verificar si usuario autenticado es propietario del inventario
     prop_inventario = session.query(models.Inventario)\
         .join(models.Negocio)\
         .where(models.Inventario.id == distribucion.inventario_id,
-               models.Negocio.propietario_id == current_user.id)\
+               models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
         .count()
 
     if not prop_negocio or not prop_inventario:
@@ -155,14 +155,14 @@ async def update_distribucion(id: int, distribucion: distribucion.DistribucionCr
         prop_negocio = session.query(models.Punto)\
             .join(models.Negocio)\
             .where(models.Punto.id == distribucion.punto_id,
-                   models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         # verificar si usuario autenticado es propietario del inventario
         prop_inventario = session.query(models.Inventario)\
             .join(models.Negocio)\
             .where(models.Inventario.id == distribucion.inventario_id,
-                   models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         if not prop_negocio or not prop_inventario:
@@ -209,14 +209,14 @@ async def delete_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2
         prop_negocio = session.query(models.Punto)\
             .join(models.Negocio)\
             .where(models.Punto.id == distribuciondb.punto_id,
-                   models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         # verificar si usuario autenticado es propietario del inventario
         prop_inventario = session.query(models.Inventario)\
             .join(models.Negocio)\
             .where(models.Inventario.id == distribuciondb.inventario_id,
-                   models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         if not prop_negocio or not prop_inventario:

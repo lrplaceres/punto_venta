@@ -29,14 +29,14 @@ async def create_inventario(inventario: inventario.InventarioCreate, token: Anno
     # verificar si usuario autenticado es propietario del negocio
     prop_negocio = session.query(models.Negocio)\
         .where(models.Negocio.id == inventario.negocio_id,
-               models.Negocio.propietario_id == current_user.id)\
+               models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
         .count()
 
     # verificar si usuario autenticado es propietario del producto
     prop_producto = session.query(models.Producto)\
         .join(models.Negocio)\
         .where(models.Negocio.id == inventario.negocio_id,
-               models.Producto.id == inventario.producto_id)\
+               models.Producto.id == inventario.producto_id,  models.Negocio.fecha_licencia >= date.today())\
         .count()
 
     if not prop_producto or not prop_negocio:
@@ -121,7 +121,7 @@ async def update_inventario(id: int, inventario: inventario.Inventario, token: A
     if inventariodb:
         prop_negocio = session.query(models.Negocio)\
             .where(models.Negocio.id == inventario.negocio_id,
-                   models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         if not prop_negocio:
@@ -169,7 +169,7 @@ async def delete_inventario(id: int, token: Annotated[str, Depends(auth.oauth2_s
     # verificar si usuario autenticado es propietario del negocio
     if inventariodb:
         prop_negocio = session.query(models.Negocio)\
-            .where(models.Negocio.id == inventariodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .where(models.Negocio.id == inventariodb.negocio_id, models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         if not prop_negocio:

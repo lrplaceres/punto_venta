@@ -35,8 +35,8 @@ async def create_venta(venta: venta.VentaCreate, token: Annotated[str, Depends(a
             .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
             .join(models.Punto, models.Punto.negocio_id == models.Negocio.id)\
             .where(models.Negocio.propietario_id == current_user.id, models.Distribucion.id == venta.distribucion_id, 
-                   models.Punto.id == venta.punto_id)\
-            .count()      
+                   models.Punto.id == venta.punto_id, models.Negocio.fecha_licencia >= date.today())\
+            .count()
 
         if not distribuciondb:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -149,8 +149,8 @@ async def update_venta(id: int, venta: venta.VentaCreate, token: Annotated[str, 
             .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
             .join(models.Punto, models.Punto.negocio_id == models.Negocio.id)\
             .where(models.Negocio.propietario_id == current_user.id, models.Distribucion.id == venta.distribucion_id, 
-                   models.Punto.id == venta.punto_id)\
-            .count()      
+                   models.Punto.id == venta.punto_id, models.Negocio.fecha_licencia >= date.today())\
+            .count()
 
         if not distribuciondb:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -203,14 +203,16 @@ async def delete_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
             .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
             .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
             .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
-            .where(models.Venta.id == id, models.Negocio.propietario_id == current_user.id)\
+            .where(models.Venta.id == id, models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .first()
 
     if current_user.rol == "dependiente":
         ventadb = session.query(models.Venta)\
             .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
             .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
-            .where(models.Venta.id == id, models.Punto.id == current_user.punto_id, models.Venta.usuario_id == current_user.id)\
+            .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+            .where(models.Venta.id == id, models.Punto.id == current_user.punto_id, models.Venta.usuario_id == current_user.id,
+                    models.Negocio.fecha_licencia >= date.today())\
             .first()
 
     # if todo item with given id exists, delete it from the database. Otherwise raise 404 error

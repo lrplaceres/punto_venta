@@ -51,7 +51,7 @@ async def create_negocio(negocio: negocio.NegocioCreate, token: Annotated[str, D
     return negociodb
 
 
-@router.get("/negocio", response_model=List[negocio.Negocio], tags=["negocio"])
+@router.get("/negocio", response_model=List[negocio.Negocio], tags=["negocio"], description="Listado de negocios")
 async def read_negocio_list(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -63,7 +63,7 @@ async def read_negocio_list(token: Annotated[str, Depends(auth.oauth2_scheme)], 
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the negocio item with the given id
-    negociodb = session.query(models.Negocio).all()
+    negociodb = session.query(models.Negocio).order_by(models.Negocio.nombre).all()
 
     # close the session
     session.close()

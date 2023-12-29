@@ -28,9 +28,10 @@ async def create_punto(punto: punto.PuntoCreate, token: Annotated[str, Depends(a
 
     # verificar si usuario autenticado es propietario del negocio
     prop_negocio = session.query(models.Negocio)\
-        .where(models.Negocio.id == punto.negocio_id, models.Negocio.propietario_id == current_user.id)\
+        .where(models.Negocio.id == punto.negocio_id, models.Negocio.propietario_id == current_user.id,
+                models.Negocio.fecha_licencia >= date.today())\
         .count()
-
+  
     if not prop_negocio:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
@@ -111,7 +112,7 @@ async def update_punto(id: int, punto: punto.PuntoCreate, token: Annotated[str, 
     if puntodb:
         prop_negocio = session.query(models.Negocio)\
             .where(models.Negocio.id == puntodb.negocio_id,
-                   models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         if not prop_negocio:
@@ -155,7 +156,7 @@ async def delete_punto(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
     if puntodb:
         prop_negocio = session.query(models.Negocio)\
             .where(models.Negocio.id == puntodb.negocio_id,
-                   models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         if not prop_negocio:

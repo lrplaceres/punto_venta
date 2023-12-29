@@ -27,7 +27,8 @@ async def create_producto(producto: producto.ProductoCreate, token: Annotated[st
 
     # verificar si usuario autenticado es propietario del negocio
     prop_negocio = session.query(models.Negocio)\
-        .where(models.Negocio.id == producto.negocio_id, models.Negocio.propietario_id == current_user.id)\
+        .where(models.Negocio.id == producto.negocio_id, models.Negocio.propietario_id == current_user.id,
+                models.Negocio.fecha_licencia >= date.today())\
         .count()
 
     if not prop_negocio:
@@ -117,7 +118,7 @@ async def update_producto(id: int, producto: producto.Producto, token: Annotated
     if productodb:
         prop_negocio = session.query(models.Negocio)\
             .where(models.Negocio.id == producto.negocio_id,
-                   models.Negocio.propietario_id == current_user.id)\
+                   models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         if not prop_negocio:
@@ -158,7 +159,7 @@ async def delete_producto(id: int, token: Annotated[str, Depends(auth.oauth2_sch
     # verificar si usuario autenticado es propietario del negocio
     if productodb:
         prop_negocio = session.query(models.Negocio)\
-            .where(models.Negocio.id == productodb.negocio_id, models.Negocio.propietario_id == current_user.id)\
+            .where(models.Negocio.id == productodb.negocio_id, models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
             .count()
 
         if not prop_negocio:

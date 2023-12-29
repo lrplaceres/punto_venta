@@ -34,7 +34,7 @@ async def create_user(dependiente: dependiente.DependienteCreate, token: Annotat
     prop_negocio = session.query(models.Punto)\
         .join(models.Negocio)\
         .where(models.Punto.id == dependiente.punto_id,
-               models.Negocio.propietario_id == current_user.id)\
+               models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
         .count()
 
     if not prop_negocio:
@@ -148,7 +148,7 @@ async def update_user(id: int, user: dependiente.DependienteEdit, token: Annotat
     userdb = session.query(models.User)\
         .join(models.Punto,models.Punto.id == models.User.punto_id)\
         .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
-        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id)\
+        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
         .first()
 
     # update user item with the given task (if an item with the given id was found)
@@ -170,39 +170,6 @@ async def update_user(id: int, user: dependiente.DependienteEdit, token: Annotat
     session.close()
 
 
-@router.delete("/dependiente/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["user"])
-async def delete_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-
-    # validando rol de usuario autenticado
-    if current_user.rol != "superadmin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=f"No está autorizado a realizar esta acción")
-
-    # create a new database session
-    session = Session(bind=engine, expire_on_commit=False)
-
-    # get the user item with the given id
-    userdb = session.query(models.User).get(id)
-
-    # if user item with given id exists, delete it from the database. Otherwise raise 404 error
-    if userdb:
-        session.delete(userdb)
-        session.commit()
-        session.close()
-
-        log.create_log({
-        "usuario": current_user.usuario,
-        "accion": "DELETE",
-        "tabla": "User",
-        "descripcion": f"Ha eliminado el id {userdb.id}"
-    })
-    else:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"El usuario {id} no ha sido encontrado")
-
-    return None
-
-
 @router.put("/dependiente-bloquear/{id}", tags=["dependiente"])
 async def update_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
@@ -218,7 +185,7 @@ async def update_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
     userdb = session.query(models.User)\
         .join(models.Punto,models.Punto.id == models.User.punto_id)\
         .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
-        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id)\
+        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
         .first()
 
     # update user item with the given task (if an item with the given id was found)
@@ -252,7 +219,7 @@ async def update_user(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)
     userdb = session.query(models.User)\
         .join(models.Punto,models.Punto.id == models.User.punto_id)\
         .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
-        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id)\
+        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
         .first()
 
     # update user item with the given task (if an item with the given id was found)
@@ -292,7 +259,7 @@ async def update_user(id: int, user: dependiente.DependienteCambiaPasswordPropie
     userdb = session.query(models.User)\
         .join(models.Punto,models.Punto.id == models.User.punto_id)\
         .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
-        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id)\
+        .where(models.User.id == id, models.Negocio.propietario_id == current_user.id, models.Negocio.fecha_licencia >= date.today())\
         .first()
 
     # update user item with the given task (if an item with the given id was found)

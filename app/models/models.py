@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Float, Boolean, Date, UniqueConstraint, DateTime
 from sqlalchemy.sql import func
 from ..database.database import Base
-from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import relationship, Mapped
 from datetime import date, datetime
 
 class Negocio(Base):
