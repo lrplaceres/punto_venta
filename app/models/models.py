@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, Boolean, Date, UniqueConstraint, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Float, Boolean, Date, DateTime
 from sqlalchemy.sql import func
 from ..database.database import Base
 from sqlalchemy.orm import relationship, Mapped
@@ -95,6 +95,8 @@ class Venta(Base):
     precio: Mapped[float] = Column(Float(2))
     monto: Mapped[float] = Column(Float(2))
     fecha: Mapped[datetime] = Column(DateTime)
+    pago_electronico: Mapped[bool] = Column(Boolean)
+    no_operacion: Mapped[str | None] = Column(String(256))
     pago_diferido: Mapped[bool] = Column(Boolean)
     descripcion: Mapped[str | None] = Column(String(256))
     punto_id: Mapped[str] = Column(Integer, ForeignKey("punto.id"))

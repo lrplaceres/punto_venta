@@ -68,7 +68,8 @@ async def create_venta(venta: venta.VentaCreate, token: Annotated[str, Depends(a
     ventadb = models.Venta(distribucion_id=venta.distribucion_id, cantidad=venta.cantidad,
                            precio=venta.precio, fecha=new_time, punto_id=venta.punto_id,
                            usuario_id=current_user.id, monto=venta.cantidad * venta.precio,
-                           pago_diferido = venta.pago_diferido, descripcion = venta.descripcion)
+                           pago_diferido = venta.pago_diferido, descripcion = venta.descripcion,
+                           pago_electronico = venta.pago_electronico, no_operacion = venta.no_operacion)
 
     # add it to the session and commit it
     session.add(ventadb)
@@ -103,7 +104,8 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
     # get the venta item with the given id
     ventadb = session.query(models.Venta.distribucion_id,models.Venta.precio, models.Venta.fecha,
                             models.Venta.punto_id, models.Venta.cantidad, models.Producto.nombre,
-                            models.Venta.pago_diferido, models.Venta.descripcion)\
+                            models.Venta.pago_diferido, models.Venta.descripcion, models.Venta.pago_electronico,
+                            models.Venta.no_operacion)\
         .join(models.Distribucion)\
         .join(models.Inventario)\
         .join(models.Producto)\
@@ -127,6 +129,8 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
         "nombre_producto": ventadb[5],
         "pago_diferido": ventadb[6],
         "descripcion": ventadb[7],
+        "pago_electronico": ventadb[8],
+        "no_operacion": ventadb[9],
     }
     return resultdb
 
@@ -170,6 +174,8 @@ async def update_venta(id: int, venta: venta.VentaCreate, token: Annotated[str, 
         ventadb.monto = venta.cantidad * venta.precio
         ventadb.pago_diferido = venta.pago_diferido
         ventadb.descripcion = venta.descripcion
+        ventadb.pago_electronico = venta.pago_electronico
+        ventadb.no_operacion = venta.no_operacion
         session.commit()
 
         log.create_log({
@@ -250,7 +256,7 @@ async def read_ventas_propietario(token: Annotated[str, Depends(auth.oauth2_sche
                              models.Punto.nombre, models.Venta.cantidad,
                              models.Venta.precio, models.Venta.fecha,
                              models.User.nombre, models.Venta.pago_diferido,
-                             models.Venta.descripcion
+                             models.Venta.descripcion, models.Venta.pago_electronico
                              )\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
@@ -275,48 +281,7 @@ async def read_ventas_propietario(token: Annotated[str, Depends(auth.oauth2_sche
             "dependiente": row[6],
             "pago_diferido": row[7],
             "descripcion": row[8],
-        })
-
-    session.close()
-    return resultdb
-
-
-@router.get("/ventas-dia/{fecha}", tags=["ventas"], description="Ventas por dia seleccionado")
-async def read_ventas_propietario(fecha: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
-
-    # validando rol de usuario autenticado
-    if current_user.rol != "propietario":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=f"No está autorizado a realizar esta acción")
-
-    # create a new database session
-    session = Session(bind=engine, expire_on_commit=False)
-
-    # get the negocio item with the given id
-    ventasdb = session.query(models.Producto.nombre,
-                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
-                             db.func.row_number().over())\
-        .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
-        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
-        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
-        .join(models.Punto, models.Punto.id == models.Venta.punto_id)\
-        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
-        .join(models.User, models.User.id == models.Venta.usuario_id)\
-        .where(models.Negocio.propietario_id == current_user.id,
-               db.func.extract("year", models.Venta.fecha) == fecha.year,
-               db.func.extract("month", models.Venta.fecha) == fecha.month,
-               db.func.extract("day", models.Venta.fecha) == fecha.day)\
-        .group_by(models.Producto.nombre, models.Punto.nombre)\
-        .order_by(db.func.sum(models.Venta.cantidad).desc())\
-        .all()
-
-    resultdb = []
-    for row in ventasdb:
-        resultdb.append({
-            "nombre_producto": row[0],
-            "nombre_punto": row[1],
-            "cantidad": row[2],
-            "id": row[3],
+            "pago_electronico": row[9],
         })
 
     session.close()
@@ -439,7 +404,7 @@ async def read_utilidades_periodo(fecha_inicio: date, fecha_fin: date, token: An
         .join(models.User, models.User.id == models.Venta.usuario_id)\
         .where(models.Negocio.propietario_id == current_user.id,
                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
-        .group_by(models.Venta.distribucion_id, models.Producto.nombre, models.Punto.nombre, models.Inventario.costo, models.Inventario.precio_venta)\
+        .group_by(models.Producto.nombre, models.Punto.nombre, models.Inventario.costo, models.Inventario.precio_venta)\
         .order_by(db.func.sum(models.Venta.cantidad).desc())\
         .all()
 
@@ -477,7 +442,8 @@ async def read_ventas_dependiente(token: Annotated[str, Depends(auth.oauth2_sche
     ventasdb = session.query(models.Venta.id, models.Producto.nombre,
                              models.Punto.nombre, models.Venta.cantidad,
                              models.Venta.precio, models.Venta.fecha,
-                             models.User.nombre
+                             models.User.nombre, models.Venta.pago_diferido, models.Venta.descripcion,
+                             models.Venta.pago_electronico
                              )\
         .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
@@ -500,6 +466,9 @@ async def read_ventas_dependiente(token: Annotated[str, Depends(auth.oauth2_sche
             "monto": row[3] * row[4],
             "fecha": row[5],
             "dependiente": row[6],
+            "pago_diferido": row[7],
+            "descripcion": row[8],
+            "pago_electronico": row[9],
         })
 
     session.close()
@@ -521,7 +490,7 @@ async def read_count_ventas(fecha_inicio: date, fecha_fin: date, token: Annotate
     contadorVentas = session.query(models.Venta).count()
 
     contadorVentasFecha = session.query(models.Venta)\
-                                .where(models.Venta.fecha_creado >= fecha_inicio, models.Venta.fecha_creado <= fecha_fin)\
+                                .where(db.func.date(models.Venta.fecha_creado) >= fecha_inicio, db.func.date(models.Venta.fecha_creado) <= fecha_fin)\
                                 .count()
 
     # close the session

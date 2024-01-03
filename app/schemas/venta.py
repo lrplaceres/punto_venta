@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date, datetime
+from datetime import datetime
 
 # Create Venta Schema (Pydantic Model)
 class VentaCreate(BaseModel):
@@ -8,6 +8,8 @@ class VentaCreate(BaseModel):
     precio: float
     fecha: datetime
     punto_id: int
+    pago_electronico: bool
+    no_operacion: str | None
     pago_diferido: bool
     descripcion: str | None
     
@@ -20,6 +22,8 @@ class Venta(BaseModel):
     monto: float
     fecha: datetime
     punto_id: int
+    pago_electronico: bool
+    no_operacion: str | None
     pago_diferido: bool
     descripcion: str | None
     usuario_id: int
@@ -32,5 +36,7 @@ class VentaGet(BaseModel):
     fecha: datetime
     punto_id: int
     nombre_producto: str
+    pago_electronico: bool
+    no_operacion: str | None
     pago_diferido: bool
     descripcion: str | None

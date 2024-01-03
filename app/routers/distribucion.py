@@ -1,3 +1,4 @@
+from xml.parsers.expat import model
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
@@ -7,7 +8,7 @@ from ..schemas import distribucion
 from .. models import models
 from ..auth import auth
 from ..log import log
-from datetime import date, datetime
+from datetime import date
 
 # Create the database
 Base.metadata.create_all(engine)
@@ -200,7 +201,7 @@ async def delete_distribucion(id: int, token: Annotated[str, Depends(auth.oauth2
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the distribucion item with the given id
-    distribuciondb: inventario.Inventario = session.query(
+    distribuciondb: models.Inventario = session.query(
         models.Distribucion).get(id)
 
     # verificar si usuario autenticado es propietario del negocio
@@ -336,6 +337,83 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
     return resultdb
 
 
+@router.get("/distribuciones-venta-resumen/{punto}", tags=["distribuciones"], description="Distribuciones disponibles para la venta, restando cantidad vendida")
+async def read_distribuciones_resumen_propietario(punto: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the distribuciones item with the given id
+    distribucionesdb = session.query(db.func.row_number().over(),models.Producto.nombre,
+                                     db.func.sum(models.Distribucion.cantidad), models.Punto.nombre,
+                                     models.Inventario.um, models.Inventario.precio_venta)\
+        .select_from(models.Distribucion)\
+        .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .where(models.Negocio.propietario_id == current_user.id, models.Punto.id == punto)\
+        .group_by(models.Producto.nombre, models.Punto.nombre, models.Inventario.um, models.Inventario.precio_venta)\
+        .order_by(models.Punto.nombre, models.Producto.nombre)\
+        .all()
+
+    resultdbdistribucion = {}
+    for row in distribucionesdb:
+            resultdbdistribucion[row[1]]={
+                "id": row[0],
+                "nombre_producto": row[1],
+                "cantidad_distribuida": row[2],
+                "nombre_punto": row[3],
+                "um": row[4],
+                "precio_venta": row[5],
+            }
+            
+     # get the negocio item with the given id
+    ventasdb = session.query(models.Producto.nombre,
+                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
+                             db.func.row_number().over())\
+        .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .join(models.Punto, models.Punto.id == models.Venta.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.User, models.User.id == models.Venta.usuario_id)\
+        .where(models.Negocio.propietario_id == current_user.id, models.Punto.id == punto)\
+        .group_by(models.Producto.nombre, models.Punto.nombre)\
+        .order_by(db.func.sum(models.Venta.cantidad).desc())\
+        .all()
+
+    resultdbventas = {}
+    for row in ventasdb:
+        resultdbventas[row[0]] = {
+            "nombre_producto": row[0],
+            "nombre_punto": row[1],
+            "cantidad_vendida": row[2],
+            "id": row[3],
+        }
+
+    resultdb=[]
+    for key, value in resultdbdistribucion.items():
+        if resultdbventas.get(key):
+            resultdbdistribucion.get(key).update({"cantidad_vendida": resultdbventas.get(key).get("cantidad_vendida")})
+        else:
+            resultdbdistribucion.get(key).update({"cantidad_vendida":0})
+
+        resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida") - resultdbdistribucion.get(key).get("cantidad_vendida")})
+       
+        if resultdbdistribucion.get(key).get("existencia") > 0:
+            resultdb.append(value)  
+
+
+    session.close()
+    return resultdb
+
+
 @router.get("/distribuciones-periodo/{fecha_inicio}/{fecha_fin}", tags=["distribuciones"], description="Listado de distribuciones por fecha, agrupadas por inventario")
 async def read_distribuciones_propietario(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
@@ -398,7 +476,7 @@ async def read_distribuciones_dependiente(token: Annotated[str, Depends(auth.oau
                                      models.Distribucion.fecha, models.Punto.id,
                                      models.Producto.nombre, models.Inventario.precio_venta,
                                      db.func.sum(db.func.coalesce(models.Venta.cantidad,0)),
-                                     models.Punto.nombre, models.Inventario.um, models.Distribucion.fecha)\
+                                     models.Punto.nombre, models.Inventario.um)\
         .select_from(models.Distribucion)\
         .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
         .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
@@ -427,9 +505,85 @@ async def read_distribuciones_dependiente(token: Annotated[str, Depends(auth.oau
                 "cantidad_vendida": row[6],
                 "nombre_punto": row[7],
                 "um": row[8],
-                "fecha": row[9],
                 "existencia": row[1] - row[6]
             })
+
+    session.close()
+    return resultdb
+
+
+@router.get("/distribuciones-venta-punto-existencia/", tags=["distribuciones"], description="Distribuciones disponibles para la venta, restando cantidad vendida")
+async def read_distribuciones_dependiente(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "dependiente":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the distribuciones item with the given id
+    distribucionesdb = session.query(db.func.row_number().over(),models.Producto.nombre,
+                                     db.func.sum(models.Distribucion.cantidad), models.Punto.nombre,
+                                     models.Inventario.um, models.Inventario.precio_venta)\
+        .select_from(models.Distribucion)\
+        .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .where(models.Punto.id == current_user.punto_id)\
+        .group_by(models.Producto.nombre, models.Punto.nombre, models.Inventario.um, models.Inventario.precio_venta)\
+        .order_by(models.Punto.nombre, models.Producto.nombre)\
+        .all()
+
+    resultdbdistribucion = {}
+    for row in distribucionesdb:
+            resultdbdistribucion[row[1]]={
+                "id": row[0],
+                "nombre_producto": row[1],
+                "cantidad_distribuida": row[2],
+                "nombre_punto": row[3],
+                "um": row[4],
+                "precio_venta": row[5],
+            }
+            
+     # get the negocio item with the given id
+    ventasdb = session.query(models.Producto.nombre,
+                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
+                             db.func.row_number().over())\
+        .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .join(models.Punto, models.Punto.id == models.Venta.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.User, models.User.id == models.Venta.usuario_id)\
+        .where(models.Punto.id == current_user.punto_id)\
+        .group_by(models.Producto.nombre, models.Punto.nombre)\
+        .order_by(db.func.sum(models.Venta.cantidad).desc())\
+        .all()
+
+    resultdbventas = {}
+    for row in ventasdb:
+        resultdbventas[row[0]] = {
+            "nombre_producto": row[0],
+            "nombre_punto": row[1],
+            "cantidad_vendida": row[2],
+            "id": row[3],
+        }
+
+    resultdb=[]
+    for key, value in resultdbdistribucion.items():
+        if resultdbventas.get(key):
+            resultdbdistribucion.get(key).update({"cantidad_vendida": resultdbventas.get(key).get("cantidad_vendida")})
+        else:
+            resultdbdistribucion.get(key).update({"cantidad_vendida":0})
+
+        resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida") - resultdbdistribucion.get(key).get("cantidad_vendida")})
+        
+        if resultdbdistribucion.get(key).get("existencia") > 0:
+            resultdb.append(value)  
+
 
     session.close()
     return resultdb
@@ -458,6 +612,167 @@ async def read_count_distribuciones(fecha_inicio: date, fecha_fin: date, token: 
     
     return {"cantidad_distribuciones": contadorDistribuciones, "nuevas_distribuciones":contadorDistribucionesFecha }
 
+
+@router.get("/distribuciones-venta-cuadre/{fecha_inicio}/{fecha_fin}/{punto}", tags=["distribuciones"], description="Cuadre propietario")
+async def read_distribuciones_cuadre_propietario(fecha_inicio: date, fecha_fin: date, punto: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the distribuciones item with the given id
+    distribucionesdb = session.query(db.func.row_number().over(),models.Producto.nombre,
+                                     db.func.sum(models.Distribucion.cantidad), models.Punto.nombre,
+                                     models.Inventario.um, models.Inventario.precio_venta)\
+        .select_from(models.Distribucion)\
+        .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .where(models.Negocio.propietario_id == current_user.id, models.Punto.id == punto)\
+        .group_by(models.Producto.nombre, models.Punto.nombre, models.Inventario.um, models.Inventario.precio_venta)\
+        .order_by(models.Punto.nombre, models.Producto.nombre)\
+        .all()
+
+    resultdbdistribucion = {}
+    for row in distribucionesdb:
+            resultdbdistribucion[row[1]]={
+                "id": row[0],
+                "nombre_producto": row[1],
+                "cantidad_distribuida": row[2],
+                "nombre_punto": row[3],
+                "um": row[4],
+                "precio_venta": row[5],
+            }
+            
+    # get the negocio item with the given id
+    ventasdb = session.query(models.Producto.nombre,
+                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
+                             db.func.row_number().over(), db.func.sum(models.Venta.monto))\
+        .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .join(models.Punto, models.Punto.id == models.Venta.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.User, models.User.id == models.Venta.usuario_id)\
+        .where(models.Negocio.propietario_id == current_user.id, models.Punto.id == punto,
+                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
+        .group_by(models.Producto.nombre, models.Punto.nombre)\
+        .order_by(db.func.sum(models.Venta.cantidad).desc())\
+        .all()
+
+    resultdbventas = {}
+    for row in ventasdb:
+        resultdbventas[row[0]] = {
+            "nombre_producto": row[0],
+            "nombre_punto": row[1],
+            "cantidad_vendida": row[2],
+            "id": row[3],
+            "monto": row[4],
+        }
+
+    resultdb=[]
+    for key, value in resultdbdistribucion.items():
+        if resultdbventas.get(key):
+            resultdbdistribucion.get(key).update({"cantidad_vendida": resultdbventas.get(key).get("cantidad_vendida")})
+            resultdbdistribucion.get(key).update({"monto": resultdbventas.get(key).get("monto")})
+        else:
+            resultdbdistribucion.get(key).update({"cantidad_vendida":0})
+            resultdbdistribucion.get(key).update({"monto":0})
+
+        resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida") - resultdbdistribucion.get(key).get("cantidad_vendida")})
+       
+        if resultdbdistribucion.get(key).get("existencia") > 0:
+            resultdb.append(value)  
+
+
+    session.close()
+    return resultdb
+
+
+@router.get("/distribuciones-venta-cuadre-dependiente/{fecha_inicio}/{fecha_fin}", tags=["distribuciones"], description="Cuadre dependiente")
+async def read_distribuciones_cuadre_dependiente(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "dependiente":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the distribuciones item with the given id
+    distribucionesdb = session.query(db.func.row_number().over(),models.Producto.nombre,
+                                     db.func.sum(models.Distribucion.cantidad), models.Punto.nombre,
+                                     models.Inventario.um, models.Inventario.precio_venta)\
+        .select_from(models.Distribucion)\
+        .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .where(models.Punto.id == current_user.punto_id)\
+        .group_by(models.Producto.nombre, models.Punto.nombre, models.Inventario.um, models.Inventario.precio_venta)\
+        .order_by(models.Punto.nombre, models.Producto.nombre)\
+        .all()
+
+    resultdbdistribucion = {}
+    for row in distribucionesdb:
+            resultdbdistribucion[row[1]]={
+                "id": row[0],
+                "nombre_producto": row[1],
+                "cantidad_distribuida": row[2],
+                "nombre_punto": row[3],
+                "um": row[4],
+                "precio_venta": row[5],
+            }
+            
+    # get the negocio item with the given id
+    ventasdb = session.query(models.Producto.nombre,
+                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
+                             db.func.row_number().over(), db.func.sum(models.Venta.monto))\
+        .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .join(models.Punto, models.Punto.id == models.Venta.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.User, models.User.id == models.Venta.usuario_id)\
+        .where(models.Punto.id == current_user.punto_id,
+                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
+        .group_by(models.Producto.nombre, models.Punto.nombre)\
+        .order_by(db.func.sum(models.Venta.cantidad).desc())\
+        .all()
+
+    resultdbventas = {}
+    for row in ventasdb:
+        resultdbventas[row[0]] = {
+            "nombre_producto": row[0],
+            "nombre_punto": row[1],
+            "cantidad_vendida": row[2],
+            "id": row[3],
+            "monto": row[4],
+        }
+
+    resultdb=[]
+    for key, value in resultdbdistribucion.items():
+        if resultdbventas.get(key):
+            resultdbdistribucion.get(key).update({"cantidad_vendida": resultdbventas.get(key).get("cantidad_vendida")})
+            resultdbdistribucion.get(key).update({"monto": resultdbventas.get(key).get("monto")})
+        else:
+            resultdbdistribucion.get(key).update({"cantidad_vendida":0})
+            resultdbdistribucion.get(key).update({"monto":0})
+
+        resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida") - resultdbdistribucion.get(key).get("cantidad_vendida")})
+       
+        if resultdbdistribucion.get(key).get("existencia") > 0:
+            resultdb.append(value)  
+
+
+    session.close()
+    return resultdb
 
 
 def existencia_distribucion_producto(distribucion_id: int):  
