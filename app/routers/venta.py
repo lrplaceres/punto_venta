@@ -360,7 +360,7 @@ async def read_ventas_brutas_periodo(fecha_inicio: date, fecha_fin: date, token:
         .where(models.Negocio.propietario_id == current_user.id,
                db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
         .group_by(db.extract("year", models.Venta.fecha), db.extract("month", models.Venta.fecha), db.extract("day", models.Venta.fecha))\
-        .order_by(db.extract("year", models.Venta.fecha), db.extract("month", models.Venta.fecha), db.extract("day", models.Venta.fecha).desc())\
+        .order_by(db.extract("year", models.Venta.fecha).desc(), db.extract("month", models.Venta.fecha).desc(), db.extract("day", models.Venta.fecha).desc())\
         .all()
 
     resultdb = []
