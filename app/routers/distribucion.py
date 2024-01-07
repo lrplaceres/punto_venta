@@ -1,3 +1,4 @@
+from cgitb import reset
 from xml.parsers.expat import model
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
@@ -674,6 +675,32 @@ async def read_distribuciones_cuadre_propietario(fecha_inicio: date, fecha_fin: 
             "id": row[3],
             "monto": row[4],
         }
+        
+
+    # get the negocio item with the given id
+    ventastotalesdb = session.query(models.Producto.nombre,
+                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
+                             db.func.row_number().over(), db.func.sum(models.Venta.monto))\
+        .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .join(models.Punto, models.Punto.id == models.Venta.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.User, models.User.id == models.Venta.usuario_id)\
+        .where(models.Negocio.propietario_id == current_user.id, models.Punto.id == punto)\
+        .group_by(models.Producto.nombre, models.Punto.nombre)\
+        .order_by(db.func.sum(models.Venta.cantidad).desc())\
+        .all()
+
+    resulttotalesdbventas = {}
+    for row in ventastotalesdb:
+        resulttotalesdbventas[row[0]] = {
+            "nombre_producto": row[0],
+            "nombre_punto": row[1],
+            "cantidad_vendida": row[2],
+            "id": row[3],
+            "monto": row[4],
+        }
 
     resultdb=[]
     for key, value in resultdbdistribucion.items():
@@ -684,8 +711,11 @@ async def read_distribuciones_cuadre_propietario(fecha_inicio: date, fecha_fin: 
             resultdbdistribucion.get(key).update({"cantidad_vendida":0})
             resultdbdistribucion.get(key).update({"monto":0})
 
-        resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida") - resultdbdistribucion.get(key).get("cantidad_vendida")})
-       
+        if resulttotalesdbventas.get(key):
+            resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida") - resulttotalesdbventas.get(key).get("cantidad_vendida")})
+        else:
+            resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida")})
+
         if resultdbdistribucion.get(key).get("existencia") > 0:
             resultdb.append(value)  
 
@@ -756,6 +786,31 @@ async def read_distribuciones_cuadre_dependiente(fecha_inicio: date, fecha_fin: 
             "monto": row[4],
         }
 
+    # get the negocio item with the given id
+    ventastotalesdb = session.query(models.Producto.nombre,
+                             models.Punto.nombre, db.func.sum(models.Venta.cantidad),
+                             db.func.row_number().over(), db.func.sum(models.Venta.monto))\
+        .join(models.Distribucion, models.Distribucion.id == models.Venta.distribucion_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .join(models.Punto, models.Punto.id == models.Venta.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.User, models.User.id == models.Venta.usuario_id)\
+        .where(models.Negocio.propietario_id == current_user.id, models.Punto.id == current_user.punto_id)\
+        .group_by(models.Producto.nombre, models.Punto.nombre)\
+        .order_by(db.func.sum(models.Venta.cantidad).desc())\
+        .all()
+
+    resulttotalesdbventas = {}
+    for row in ventastotalesdb:
+        resulttotalesdbventas[row[0]] = {
+            "nombre_producto": row[0],
+            "nombre_punto": row[1],
+            "cantidad_vendida": row[2],
+            "id": row[3],
+            "monto": row[4],
+        }
+
     resultdb=[]
     for key, value in resultdbdistribucion.items():
         if resultdbventas.get(key):
@@ -765,7 +820,10 @@ async def read_distribuciones_cuadre_dependiente(fecha_inicio: date, fecha_fin: 
             resultdbdistribucion.get(key).update({"cantidad_vendida":0})
             resultdbdistribucion.get(key).update({"monto":0})
 
-        resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida") - resultdbdistribucion.get(key).get("cantidad_vendida")})
+        if resulttotalesdbventas.get(key):
+            resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida") - resulttotalesdbventas.get(key).get("cantidad_vendida")})
+        else:
+            resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida")})
        
         if resultdbdistribucion.get(key).get("existencia") > 0:
             resultdb.append(value)  
