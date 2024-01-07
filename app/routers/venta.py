@@ -265,7 +265,7 @@ async def read_ventas_propietario(token: Annotated[str, Depends(auth.oauth2_sche
         .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
         .join(models.User, models.User.id == models.Venta.usuario_id)\
         .where(models.Negocio.propietario_id == current_user.id)\
-        .order_by(models.Venta.fecha.desc())\
+        .order_by(models.Venta.fecha.desc(), models.Producto.nombre)\
         .all()
 
     resultdb = []

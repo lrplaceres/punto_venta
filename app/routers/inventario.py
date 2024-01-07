@@ -213,6 +213,7 @@ async def read_inventarios_propietario(token: Annotated[str, Depends(auth.oauth2
         .join(models.User)\
         .join(models.Producto, models.Inventario.producto_id == models.Producto.id)\
         .where(models.User.usuario.like(current_user.usuario))\
+        .order_by(models.Inventario.fecha.desc(), models.Producto.nombre)\
         .all()
 
     resultdb = []

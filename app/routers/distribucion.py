@@ -267,6 +267,7 @@ async def read_distribuciones_propietario(token: Annotated[str, Depends(auth.oau
         .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
         .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
         .where(models.User.usuario.like(current_user.usuario))\
+        .order_by(models.Distribucion.fecha.desc(), models.Producto.nombre)\
         .all()
 
     resultdb = []
