@@ -717,7 +717,7 @@ async def read_distribuciones_cuadre_propietario(fecha_inicio: date, fecha_fin: 
         else:
             resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida")})
 
-        if resultdbdistribucion.get(key).get("existencia") > 0:
+        if resultdbdistribucion.get(key).get("existencia") > 0 or resultdbdistribucion.get(key).get("cantidad_vendida") > 0:
             resultdb.append(value)  
 
 
@@ -826,7 +826,7 @@ async def read_distribuciones_cuadre_dependiente(fecha_inicio: date, fecha_fin: 
         else:
             resultdbdistribucion.get(key).update({"existencia": resultdbdistribucion.get(key).get("cantidad_distribuida")})
        
-        if resultdbdistribucion.get(key).get("existencia") > 0:
+        if resultdbdistribucion.get(key).get("existencia") > 0 or resultdbdistribucion.get(key).get("cantidad_vendida") > 0:
             resultdb.append(value)  
 
 
