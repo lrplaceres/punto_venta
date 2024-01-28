@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from .routers import user, negocio, punto, producto, inventario, distribucion, venta, dependiente
+from .routers import user, negocio, punto, producto, inventario, distribucion, venta, dependiente, factura
 from .schemas import token, user as schemaUser
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -35,6 +35,7 @@ app.include_router(distribucion.router)
 app.include_router(venta.router)
 app.include_router(user.router)
 app.include_router(dependiente.router)
+app.include_router(factura.router)
 
 
 @app.get("/")

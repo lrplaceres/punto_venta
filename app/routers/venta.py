@@ -56,7 +56,7 @@ async def create_venta(venta: venta.VentaCreate, token: Annotated[str, Depends(a
                                 detail=f"No está autorizado a realizar esta acción")
 
     existencia = distribucionRouter.existencia_distribucion_producto(venta.distribucion_id)
-    print(existencia)
+    
     if not existencia.get("disponible") or existencia.get("disponible") < venta.cantidad:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, 
                             detail=f"El producto no está disponible")

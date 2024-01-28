@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Float, Boolean, Date, DateTime
+from pydantic import Json
+from sqlalchemy import JSON, Column, Integer, String, ForeignKey, Float, Boolean, Date, DateTime
 from sqlalchemy.sql import func
 from ..database.database import Base
 from sqlalchemy.orm import relationship, Mapped
@@ -36,6 +37,7 @@ class Punto(Base):
     distribuciones: Mapped[int] = relationship("Distribucion", back_populates = "puntos", cascade="all, delete-orphan")
     ventas: Mapped[int] = relationship("Venta", back_populates = "puntos", cascade="all, delete-orphan")
     usuarios: Mapped[int] = relationship("User", back_populates = "puntos")
+    facturas: Mapped[int] = relationship("Factura", back_populates = "puntos")
 
 
 class Producto(Base):
@@ -139,3 +141,19 @@ class Log(Base):
     fecha_creado: Mapped[datetime] = Column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class Factura(Base):
+    __tablename__ = 'factura'
+    id: Mapped[int] = Column(Integer, primary_key=True)
+    monto: Mapped[float] = Column(Float(2))
+    ventas: Mapped[str] = Column(String(2048))
+    fecha: Mapped[datetime] = Column(DateTime)
+    pago_electronico: Mapped[bool] = Column(Boolean)
+    no_operacion: Mapped[str | None] = Column(String(256))
+    punto_id: Mapped[int] = Column(Integer, ForeignKey("punto.id"))
+    fecha_creado: Mapped[datetime] = Column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    puntos: Mapped[int] = relationship("Punto", back_populates = "facturas")
