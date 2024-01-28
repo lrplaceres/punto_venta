@@ -1,3 +1,4 @@
+from uuid import uuid3, uuid4
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List, Annotated
 from sqlalchemy.orm import Session
@@ -285,6 +286,57 @@ async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oau
     return resultdb
 
 
+@router.get("/inventarios-almacen/", tags=["inventarios"], description="Productos en Inventario no distribuidos")
+async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the inventario item with the given id
+    inventariosdb = session.query(models.Producto.nombre,
+                                  db.func.sum(db.func.coalesce((models.Inventario.cantidad), 0)),
+                                  models.Inventario.costo,
+                                  db.func.sum(db.func.coalesce((models.Distribucion.cantidad), 0)),
+                                  models.Inventario.negocio_id,
+                                  models.Negocio.nombre)\
+        .select_from(models.Inventario)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Inventario.negocio_id)\
+        .outerjoin(models.Distribucion, models.Distribucion.inventario_id == models.Inventario.id)\
+        .where(models.Negocio.propietario_id == current_user.id)\
+        .group_by(models.Inventario.producto_id, models.Inventario.costo, models.Producto.nombre,
+                  models.Negocio.nombre, models.Inventario.negocio_id)\
+        .order_by(models.Producto.nombre)\
+        .all()
+
+    resultdb = []
+    for row in inventariosdb:
+        if row[1] - row[3]:
+            resultdb.append({
+                "id": uuid4(),
+                "nombre": row[0],
+                "cantidad": row[1],
+                "costo": row[2],
+                "distribuido": row[3],
+                "negocio_id": row[4],
+                "existencia": row[1] - row[3],
+                "nombre_negocio": row[5],
+            })
+
+    session.close()
+
+    if not inventariosdb:
+        raise HTTPException(
+            status_code=404, detail=f"Inventarios no encontrados")
+
+    return resultdb
+
+
 @router.get("/inventarios-costos-brutos/{fecha_inicio}/{fecha_fin}", tags=["inventarios"], description="Monto propietario")
 async def read_inventarios_propietario(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
@@ -348,3 +400,72 @@ async def read_count_inventarios(fecha_inicio: date, fecha_fin: date, token: Ann
     session.close()
     
     return {"cantidad_inventarios": contadorInventarios, "nuevos_inventarios":contadorInventariosFecha }
+
+
+@router.get("/inventarios-tarjeta/{fecha_inicio}/{fecha_fin}/{id}", tags=["inventarios"], description="Productos en inventario por propietario")
+async def read_inventarios_propietario(fecha_inicio: date, fecha_fin: date, id: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+
+    # validando rol de usuario autenticado
+    if current_user.rol != "propietario":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f"No está autorizado a realizar esta acción")
+
+    # create a new database session
+    session = Session(bind=engine, expire_on_commit=False)
+
+    # get the negocio item with the given id
+    inventariodb = session.query(models.Inventario.id, models.Producto.nombre,
+                             models.Inventario.cantidad, models.Negocio.nombre,
+                             models.Inventario.costo, models.Inventario.fecha, 
+                             models.Inventario.precio_venta)\
+        .select_from(models.Inventario)\
+        .join(models.Negocio)\
+        .join(models.Producto, models.Inventario.producto_id == models.Producto.id)\
+        .where(models.Negocio.propietario_id == current_user.id, models.Inventario.fecha >= fecha_inicio,
+                models.Inventario.fecha <= fecha_fin, models.Producto.id == id)\
+        .order_by(models.Inventario.fecha.desc(), models.Producto.nombre)\
+        .all()
+
+    resultdb = []
+    for row in inventariodb:
+        resultdb.append({
+            "id": row[0],
+            "nombre": row[1],
+            "cantidad": row[2],
+            "negocio_id": row[3],
+            "costo": row[4],
+            "fecha": row[5],
+            "precio_venta": row[6],
+            "accion": "Entrada",
+        })
+
+    distribucionesdb = session.query(models.Inventario.id, models.Producto.nombre,
+                             models.Distribucion.cantidad, models.Negocio.nombre,
+                             models.Inventario.costo, models.Inventario.fecha, 
+                             models.Inventario.precio_venta)\
+        .select_from(models.Distribucion)\
+        .join(models.Punto, models.Punto.id == models.Distribucion.punto_id)\
+        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+        .join(models.Inventario, models.Inventario.id == models.Distribucion.inventario_id)\
+        .join(models.Producto, models.Producto.id == models.Inventario.producto_id)\
+        .where(models.Negocio.propietario_id == current_user.id, models.Distribucion.fecha >= fecha_inicio,
+                models.Distribucion.fecha <= fecha_fin, models.Producto.id == id)\
+        .order_by(models.Distribucion.fecha.desc(), models.Producto.nombre)\
+        .all()
+    
+    for row in distribucionesdb:
+        resultdb.append({
+            "id": uuid4(),
+            "nombre": row[1],
+            "cantidad": row[2],
+            "negocio_id": row[3],
+            "costo": row[4],
+            "fecha": row[5],
+            "precio_venta": row[6],
+            "accion": "Salida",
+        })
+
+    resultdb.sort(key=lambda result : result['fecha'], reverse=True)
+
+    session.close()
+    return resultdb
