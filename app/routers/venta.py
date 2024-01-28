@@ -48,7 +48,8 @@ async def create_venta(venta: venta.VentaCreate, token: Annotated[str, Depends(a
             .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
             .join(models.Inventario, models.Inventario.negocio_id == models.Negocio.id)\
             .join(models.Distribucion, models.Distribucion.inventario_id ==  models.Inventario.id)\
-            .where(models.Punto.id == current_user.punto_id, models.Punto.id == venta.punto_id, models.Distribucion.id == venta.distribucion_id)\
+            .where(models.Punto.id == current_user.punto_id, models.Punto.id == venta.punto_id,
+                   models.Distribucion.id == venta.distribucion_id,  models.Negocio.fecha_licencia >= date.today())\
             .count()      
 
         if not puntodb:

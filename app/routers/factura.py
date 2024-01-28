@@ -25,6 +25,26 @@ async def create_factura(carrito: List[Pedido], detallesPago:detallesPago, total
                             detail=f"No está autorizado a realizar esta acción")
     
     session = Session(bind=engine, expire_on_commit=False)
+
+    #verificar licencia
+    if current_user.rol == "propietario":
+        negociodb = session.query(models.Negocio)\
+            .join(models.Punto, models.Punto.negocio_id == models.Negocio.id)\
+            .where(models.Negocio.propietario_id == current_user.id, models.Punto.id == detallesPago.punto_id,
+                   models.Negocio.fecha_licencia >= date.today())\
+            .count()
+        
+    if current_user.rol == "dependiente":
+        negociodb = session.query(models.Negocio)\
+            .join(models.Punto, models.Punto.negocio_id == models.Negocio.id)\
+            .where(models.Negocio.propietario_id == current_user.id, models.Punto.id == current_user.punto_id,
+                   models.Negocio.fecha_licencia >= date.today())\
+            .count()
+        
+    if not negociodb:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail=f"No está autorizado a realizar esta acción")
+            
     ventas = []
      
     for row in carrito:
@@ -114,11 +134,11 @@ async def read_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme)]
     return resultdb
 
 
-@router.get("/facturas", tags=["facturas"], description="Listado de facturas de un propietario")
+@router.get("/facturas", tags=["facturas"], description="Listado de facturas")
 async def read_facturas_propietario(token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
-    if current_user.rol != "propietario":
+    if current_user.rol != "propietario" and current_user.rol != "dependiente":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=f"No está autorizado a realizar esta acción")
 
@@ -126,13 +146,21 @@ async def read_facturas_propietario(token: Annotated[str, Depends(auth.oauth2_sc
     session = Session(bind=engine, expire_on_commit=False)
 
     # get the negocio item with the given id
-    facturasdb = session.query(models.Factura.id, models.Factura.monto, models.Factura.pago_electronico,
-                            models.Factura.no_operacion, models.Punto.nombre, models.Factura.fecha)\
-        .join(models.Punto, models.Punto.id == models.Factura.punto_id)\
-        .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
-        .where(models.Negocio.propietario_id == current_user.id)\
-        .order_by(models.Factura.fecha.desc())\
-        .all()
+    if current_user.rol == "propietario":
+        facturasdb = session.query(models.Factura.id, models.Factura.monto, models.Factura.pago_electronico,
+                                models.Factura.no_operacion, models.Punto.nombre, models.Factura.fecha)\
+            .join(models.Punto, models.Punto.id == models.Factura.punto_id)\
+            .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
+            .where(models.Negocio.propietario_id == current_user.id)\
+            .order_by(models.Factura.fecha.desc())\
+            .all()
+    else:
+        facturasdb = session.query(models.Factura.id, models.Factura.monto, models.Factura.pago_electronico,
+                                models.Factura.no_operacion, models.Punto.nombre, models.Factura.fecha)\
+            .join(models.Punto, models.Punto.id == models.Factura.punto_id)\
+            .where(models.Punto.id == current_user.punto_id)\
+            .order_by(models.Factura.fecha.desc())\
+            .all()
 
     session.close()
 
@@ -175,6 +203,7 @@ async def delete_venta(id: int, token: Annotated[str, Depends(auth.oauth2_scheme
 
     if current_user.rol == "dependiente":
         facturadb = session.query(models.Factura)\
+            .join(models.Punto, models.Punto.id == models.Factura.punto_id)\
             .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
             .where(models.Factura.id == id, models.Punto.id == current_user.punto_id, models.Venta.usuario_id == current_user.id,
                     models.Negocio.fecha_licencia >= date.today())\
