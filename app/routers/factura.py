@@ -37,13 +37,13 @@ async def create_factura(carrito: List[Pedido], detallesPago:detallesPago, total
     if current_user.rol == "dependiente":
         negociodb = session.query(models.Negocio)\
             .join(models.Punto, models.Punto.negocio_id == models.Negocio.id)\
-            .where(models.Negocio.propietario_id == current_user.id, models.Punto.id == current_user.punto_id,
+            .where(models.Punto.id == current_user.punto_id,
                    models.Negocio.fecha_licencia >= date.today())\
             .count()
         
     if not negociodb:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                                detail=f"No está autorizado a realizar esta acción")
+                                detail=f"1No está autorizado a realizar esta acción")
             
     ventas = []
      
