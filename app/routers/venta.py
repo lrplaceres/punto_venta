@@ -289,8 +289,8 @@ async def read_ventas_propietario(token: Annotated[str, Depends(auth.oauth2_sche
     return resultdb
 
 
-@router.get("/ventas-periodo/{fecha_inicio}/{fecha_fin}", tags=["ventas"])
-async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.get("/ventas-periodo/{fecha_inicio}/{fecha_fin}/{negocio}", tags=["ventas"])
+async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, negocio: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -316,7 +316,8 @@ async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annota
         .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
         .join(models.User, models.User.id == models.Venta.usuario_id)\
         .where(models.Negocio.propietario_id == current_user.id,
-               db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
+               db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin,
+               models.Negocio.id == negocio)\
         .group_by(models.Producto.nombre, models.Punto.nombre)\
         .order_by(db.func.sum(models.Venta.cantidad).desc())\
         .all()
@@ -334,7 +335,7 @@ async def read_ventas_periodo(fecha_inicio: date, fecha_fin: date, token: Annota
     return resultdb
 
 
-@router.get("/ventas-brutas-periodo/{fecha_inicio}/{fecha_fin}", tags=["ventas"])
+@router.get("/ventas-brutas-periodo/{fecha_inicio}/{fecha_fin}/", tags=["ventas"])
 async def read_ventas_brutas_periodo(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
@@ -376,8 +377,8 @@ async def read_ventas_brutas_periodo(fecha_inicio: date, fecha_fin: date, token:
     return resultdb
 
 
-@router.get("/ventas-utilidades-periodo/{fecha_inicio}/{fecha_fin}", tags=["ventas"])
-async def read_utilidades_periodo(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.get("/ventas-utilidades-periodo/{fecha_inicio}/{fecha_fin}/{negocio}", tags=["ventas"])
+async def read_utilidades_periodo(fecha_inicio: date, fecha_fin: date, negocio: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -404,7 +405,8 @@ async def read_utilidades_periodo(fecha_inicio: date, fecha_fin: date, token: An
         .join(models.Negocio, models.Negocio.id == models.Punto.negocio_id)\
         .join(models.User, models.User.id == models.Venta.usuario_id)\
         .where(models.Negocio.propietario_id == current_user.id,
-               db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin)\
+               db.func.date(models.Venta.fecha) >= fecha_inicio, db.func.date(models.Venta.fecha) <= fecha_fin,
+               models.Negocio.id == negocio)\
         .group_by(models.Producto.nombre, models.Punto.nombre, models.Inventario.costo, models.Inventario.precio_venta)\
         .order_by(db.func.sum(models.Venta.cantidad).desc())\
         .all()

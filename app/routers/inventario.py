@@ -337,8 +337,8 @@ async def cantidad_distribuida_inventario(token: Annotated[str, Depends(auth.oau
     return resultdb
 
 
-@router.get("/inventarios-costos-brutos/{fecha_inicio}/{fecha_fin}", tags=["inventarios"], description="Monto propietario")
-async def read_inventarios_propietario(fecha_inicio: date, fecha_fin: date, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
+@router.get("/inventarios-costos-brutos/{fecha_inicio}/{fecha_fin}/{negocio}", tags=["inventarios"], description="Monto propietario")
+async def read_inventarios_propietario(fecha_inicio: date, fecha_fin: date, negocio: int, token: Annotated[str, Depends(auth.oauth2_scheme)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
 
     # validando rol de usuario autenticado
     if current_user.rol != "propietario":
@@ -361,7 +361,8 @@ async def read_inventarios_propietario(fecha_inicio: date, fecha_fin: date, toke
         .join(models.User)\
         .join(models.Producto, models.Inventario.producto_id == models.Producto.id)\
         .where(models.User.usuario.like(current_user.usuario),
-                db.func.date(models.Inventario.fecha) >= fecha_inicio, db.func.date(models.Inventario.fecha) <= fecha_fin)\
+                db.func.date(models.Inventario.fecha) >= fecha_inicio, db.func.date(models.Inventario.fecha) <= fecha_fin,
+                models.Negocio.id == negocio)\
         .group_by(db.extract("year", models.Inventario.fecha), db.extract("month", models.Inventario.fecha), db.extract("day", models.Inventario.fecha))\
         .order_by(db.extract("year", models.Inventario.fecha), db.extract("month", models.Inventario.fecha), db.extract("day", models.Inventario.fecha).desc())\
         .all()
